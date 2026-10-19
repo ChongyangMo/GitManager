@@ -17,13 +17,14 @@ public sealed record ThemeChoice(string Label, string Value);
 public partial class FormWindow : Window
 {
     public IReadOnlyList<FormField> Fields { get; }
-    public List<ThemeChoice> Themes { get; } = [new("跟随系统", "System"), new("浅色", "Light"), new("深色", "Dark")];
+    public List<ThemeChoice> Themes { get; } = [new("跟随系统", "System"), new("白天模式", "Light"), new("黑夜模式", "Dark")];
     public string Theme => ThemeBox.SelectedValue as string ?? "System";
     public Func<string?>? Validate { get; set; }
     public FormWindow(string title, params FormField[] fields)
     {
         Fields = fields;
         InitializeComponent();
+        GitManager.Services.ThemeService.Attach(this);
         Title = title;
         DataContext = this;
         Loaded += (_, _) => MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.First));

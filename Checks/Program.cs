@@ -168,9 +168,18 @@ internal static class Program
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 if (viewModel.HistoryFiles.Count == 0 || viewModel.Comparison is null) throw new InvalidOperationException("历史界面未加载真实提交。");
                 SaveScreenshot(window, Path.ChangeExtension(screenshotPath, "history.png"));
-                ThemeService.Apply("Dark");
+                await viewModel.SetThemeAsync("Dark");
+                if (!ThemeService.IsDark || viewModel.ThemeActionText != "白天模式" || new SettingsStore(store.FilePath).Value.Theme != "Dark") throw new InvalidOperationException("黑夜模式或配置持久化未生效。");
+                var toggle = (System.Windows.Controls.Button)window.FindName("ThemeToggleButton");
+                toggle.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+                while (viewModel.IsBusy) await Task.Delay(20);
+                if (ThemeService.IsDark || viewModel.ThemeActionText != "黑夜模式") throw new InvalidOperationException("一键切换白天模式未生效。");
+                toggle.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+                while (viewModel.IsBusy) await Task.Delay(20);
+                if (!ThemeService.IsDark) throw new InvalidOperationException("一键切换黑夜模式未生效。");
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 SaveScreenshot(window, Path.ChangeExtension(screenshotPath, "dark.png"));
+                Console.WriteLine("黑夜模式、按钮切换和配置保存检查通过。");
             }
             catch (Exception ex) { errors++; Console.Error.WriteLine("界面检查失败：" + ex); }
             finally { window.Close(); }

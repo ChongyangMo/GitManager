@@ -5,7 +5,7 @@ using GitManager.Services;
 
 namespace GitManager.ViewModels;
 
-public sealed partial class MainViewModel : ObservableObject
+public sealed partial class MainViewModel : ObservableObject, IDisposable
 {
     public SettingsStore Settings { get; }
     public GitRepositoryService Git { get; }
@@ -51,9 +51,14 @@ public sealed partial class MainViewModel : ObservableObject
     public MainViewModel(SettingsStore settings)
     {
         Settings = settings;
+        ThemeService.Changed += ThemeChanged;
         Git = new(new GitRunner(() => Settings.Value.GitExecutablePath));
         foreach (string path in settings.Value.Repositories.Distinct(StringComparer.OrdinalIgnoreCase)) Repositories.Add(new(path));
     }
+
+    public string ThemeActionText => ThemeService.IsDark ? "白天模式" : "黑夜模式";
+    private void ThemeChanged() => Notify(nameof(ThemeActionText));
+    public void Dispose() => ThemeService.Changed -= ThemeChanged;
 
     public async Task ExecuteAsync(string message, Func<Task> action)
     {

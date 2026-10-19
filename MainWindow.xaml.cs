@@ -20,7 +20,9 @@ public partial class MainWindow : Window
         ViewModel = viewModel;
         InitializeComponent();
         DataContext = viewModel;
+        ThemeService.Attach(this);
         Closing += WindowClosing;
+        Closed += (_, _) => viewModel.Dispose();
     }
     private string? ChooseFolder(string title)
     {
@@ -75,6 +77,7 @@ public partial class MainWindow : Window
     private async void FetchClicked(object sender, RoutedEventArgs e) => await ViewModel.SynchronizeAsync("fetch");
     private async void PullClicked(object sender, RoutedEventArgs e) => await ViewModel.SynchronizeAsync("pull");
     private async void PushClicked(object sender, RoutedEventArgs e) => await ViewModel.SynchronizeAsync("push");
+    private async void ThemeToggleClicked(object sender, RoutedEventArgs e) => await ViewModel.SetThemeAsync(ThemeService.IsDark ? "Light" : "Dark");
     private async void RemoteClicked(object sender, RoutedEventArgs e)
     {
         var dialog = new FormWindow("远程仓库", new FormField("origin 地址", ViewModel.Remote)) { Owner = this };

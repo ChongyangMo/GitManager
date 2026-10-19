@@ -9,6 +9,7 @@ public partial class RecoveryWindow : Window
     public RecoveryWindow(IReadOnlyList<RecoveryPoint> points)
     {
         InitializeComponent();
+        GitManager.Services.ThemeService.Attach(this);
         PointsList.ItemsSource = points;
         if (points.Count > 0) PointsList.SelectedIndex = 0;
     }
