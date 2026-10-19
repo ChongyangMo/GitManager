@@ -32,16 +32,17 @@ internal static partial class Program
         viewModel.History.CollectionChanged -= changed;
         viewModel.Branches.CollectionChanged -= changed;
         if (viewModel.Branch != branch || window.FindName("BranchBox") is not System.Windows.Controls.ComboBox { SelectedItem: string selectedBranch } || selectedBranch != branch) throw new InvalidOperationException("刷新后分支选择发生变化。");
-        if (resets > 0 || !ReferenceEquals(rows, viewModel.DiffRows) || !ReferenceEquals(selectedCommit, viewModel.SelectedCommit)) throw new InvalidOperationException("刷新时重建了未改变的列表或差异。");
+        if (resets > 0 || !ReferenceEquals(rows, viewModel.DiffRows) || !ReferenceEquals(selectedCommit, viewModel.SelectedCommit)) throw new InvalidOperationException($"刷新时重建了未改变的列表或差异：列表重置 {resets}，差异保持 {ReferenceEquals(rows, viewModel.DiffRows)}，提交保持 {ReferenceEquals(selectedCommit, viewModel.SelectedCommit)}，当前页 {viewModel.ActiveTab}。");
         Console.WriteLine("操作期间的深色背景、分支选择和刷新位置保持检查通过。");
     }
 
     private static int CountWhitePixels(Window window)
     {
         window.UpdateLayout();
-        int width = (int)window.ActualWidth, height = (int)window.ActualHeight;
+        var content = (FrameworkElement)window.Content;
+        int width = (int)content.ActualWidth, height = (int)content.ActualHeight;
         var image = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
-        image.Render(window);
+        image.Render(content);
         byte[] pixels = new byte[width * height * 4];
         image.CopyPixels(pixels, width * 4, 0);
         int count = 0;

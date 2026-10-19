@@ -36,12 +36,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public string UserName { get => _userName; private set => Set(ref _userName, value); }
     public string UserEmail { get => _userEmail; private set => Set(ref _userEmail, value); }
     public string CommitMessage { get => _commitMessage; set => Set(ref _commitMessage, value); }
-    public ChangedFile? SelectedChange { get => _selectedChange; set => Set(ref _selectedChange, value); }
+    public ChangedFile? SelectedChange { get => _selectedChange; set { Set(ref _selectedChange, value); Notify(nameof(CanResolveSelected)); } }
     public CommitInfo? SelectedCommit { get => _selectedCommit; set => Set(ref _selectedCommit, value); }
     public HistoryFile? SelectedHistoryFile { get => _selectedHistoryFile; set => Set(ref _selectedHistoryFile, value); }
     public int ActiveTab { get => _activeTab; set => Set(ref _activeTab, value); }
     public string ChangesTitle => $"改动 {Changes.Count}";
-    public string HistoryTitle => $"历史 {History.Count}";
+    public string HistoryTitle => $"本地 {History.Count}";
     public List<DiffRow> DiffRows { get => _diffRows; private set => Set(ref _diffRows, value); }
     public FileComparison? Comparison
     {

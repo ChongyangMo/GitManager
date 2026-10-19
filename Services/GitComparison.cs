@@ -74,7 +74,7 @@ public sealed partial class GitRepositoryService
             string left = Path.Combine(directory, "before.txt"), right = Path.Combine(directory, "after.txt");
             await File.WriteAllTextAsync(left, before, new UTF8Encoding(false));
             await File.WriteAllTextAsync(right, after, new UTF8Encoding(false));
-            var result = await Runner.RunAsync(null, ["diff", "--no-index", "--no-ext-diff", "--no-textconv", "--unified=3", "--", left, right], true);
+            var result = await Runner.RunAsync(directory, ["diff", "--no-index", "--no-ext-diff", "--no-textconv", "--unified=3", "--", "before.txt", "after.txt"], true);
             if (result.ExitCode is not (0 or 1)) throw new InvalidOperationException("生成代码差异失败：" + result.Error);
             return result.Output;
         }

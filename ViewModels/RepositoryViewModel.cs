@@ -14,6 +14,9 @@ public sealed partial class MainViewModel
         Settings.Value.LastRepository = root;
         SaveBookmarks();
         await RefreshCoreAsync();
+        await FetchRemoteCoreAsync(tolerateFailure: true);
+        await RefreshVersionsCoreAsync();
+        await LoadComparisonCoreAsync();
     }
 
     private void SaveBookmarks()
@@ -46,6 +49,7 @@ public sealed partial class MainViewModel
         SelectedChange = Changes.FirstOrDefault(item => item.Path == selectedPath) ?? Changes.FirstOrDefault();
         SelectedCommit = History.FirstOrDefault(item => item.Hash == selectedHash) ?? History.FirstOrDefault();
         await LoadHistoryFilesCoreAsync();
+        await RefreshVersionsCoreAsync();
         await LoadComparisonCoreAsync();
         Notify(nameof(ChangesTitle)); Notify(nameof(HistoryTitle));
     }
@@ -56,6 +60,7 @@ public sealed partial class MainViewModel
         if (Repository == bookmark)
         {
             Repository = null;
+            ClearVersions();
             Changes.Clear(); History.Clear(); HistoryFiles.Clear(); Branches.Clear();
             Comparison = null; Branch = ""; Remote = "";
             Settings.Value.LastRepository = null;
@@ -73,22 +78,22 @@ public sealed partial class MainViewModel
 
     public Task CommitAsync() => ExecuteAsync("正在保存本地版本", async () =>
     {
-        await Git.CommitAsync(Root, Changes.Where(item => item.Selected).ToArray(), CommitMessage);
+        if (IsMerging) await Git.FinishMergeAsync(Root, CommitMessage);
+        else await Git.CommitAsync(Root, Changes.Where(item => item.Selected).ToArray(), CommitMessage);
         CommitMessage = "";
         await RefreshCoreAsync();
         Status = "已保存到本地";
     });
 
-    public Task SynchronizeAsync(string operation) => ExecuteAsync(operation switch { "push" => "正在推送", "pull" => "正在拉取", _ => "正在获取远程记录" }, async () =>
-    {
-        try { await Git.SynchronizeAsync(Root, operation); }
-        finally { await RefreshCoreAsync(); }
-    });
+    public Task SynchronizeAsync(string operation) => RunVersionSyncAsync(operation);
 
     public Task SaveRemoteAsync(string url) => ExecuteAsync("正在保存远程地址", async () =>
     {
         await Git.SaveRemoteAsync(Root, url);
         await RefreshCoreAsync();
+        await FetchRemoteCoreAsync(tolerateFailure: true);
+        await RefreshVersionsCoreAsync();
+        await LoadComparisonCoreAsync();
     });
 
     public Task SaveSettingsAsync(string gitPath, string theme, string name, string email) => ExecuteAsync("正在保存设置", async () =>

@@ -1,0 +1,12 @@
+<UserControl x:Class="GitManager.Views.Versions.VersionComparisonView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Foreground="{DynamicResource TextBrush}">
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Margin="16,14,16,10">
+            <TextBlock Text="左侧版本" Margin="0,0,0,7" />
+            <ComboBox x:Name="BeforeSelector" ItemsSource="{Binding VersionChoices}" SelectedItem="{Binding ComparisonBefore}" DisplayMemberPath="Display" SelectionChanged="VersionChanged" ToolTip="{Binding ComparisonBefore.Display}" />
+            <TextBlock Text="右侧版本" Margin="0,14,0,7" />
+            <ComboBox x:Name="AfterSelector" ItemsSource="{Binding VersionChoices}" SelectedItem="{Binding ComparisonAfter}" DisplayMemberPath="Display" SelectionChanged="VersionChanged" ToolTip="{Binding ComparisonAfter.Display}" />
+            <TextBlock Text="{Binding VersionComparisonState}" Foreground="{DynamicResource MutedBrush}" Margin="0,14,0,0" />
+        </StackPanel>
+        <ListBox ItemsSource="{Binding VersionFiles}" SelectedItem="{Binding SelectedVersionFile}" Style="{StaticResource WorkspaceList}" ItemTemplate="{StaticResource VersionFileTemplate}" SelectionChanged="FileChanged" />
+    </DockPanel>
+</UserControl>

@@ -22,6 +22,7 @@ internal static partial class Program
         try
         {
             if (args.Length == 3 && args[0] == "--ui") { RenderPreview(args[1], args[2]); return 0; }
+            if (args.Length == 1 && args[0] == "--versions") { RunVersionChecksAsync().GetAwaiter().GetResult(); return 0; }
             string testRoot = RunChecksAsync().GetAwaiter().GetResult();
             Console.WriteLine($"检查通过，共 {_count} 项。真实临时仓库：{testRoot}");
             if (args.Length == 2) RenderPreview(args[0], args[1]);
@@ -147,15 +148,18 @@ internal static partial class Program
 
     private static void RenderPreview(string repository, string screenshotPath)
     {
-        var app = new Application();
-        foreach (string theme in new[] { "Light", "Controls", "Workspace" }) app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"/GitManager;component/Themes/{theme}.xaml", UriKind.Relative) });
+        var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        foreach (string theme in new[] { "Light", "Controls", "Workspace", "VersionTemplates" }) app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"/GitManager;component/Themes/{theme}.xaml", UriKind.Relative) });
         var store = new SettingsStore(Path.Combine(Path.GetTempPath(), "GitManagerChecks", Guid.NewGuid().ToString("N"), "settings.json"));
         var viewModel = new MainViewModel(store);
-        var window = new GitManager.MainWindow(viewModel);
+        var window = new GitManager.MainWindow(viewModel) { ShowInTaskbar = false, ShowActivated = false, WindowStartupLocation = WindowStartupLocation.Manual, Left = -30000, Top = -30000 };
         int errors = 0;
+        bool started = false;
         app.DispatcherUnhandledException += (_, e) => { Console.Error.WriteLine("界面检查失败：" + e.Exception); errors++; e.Handled = true; app.Shutdown(1); };
         window.Loaded += async (_, _) =>
         {
+            if (started) return;
+            started = true;
             try
             {
                 await viewModel.InitializeAsync(repository);
@@ -180,10 +184,11 @@ internal static partial class Program
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 SaveScreenshot(window, Path.ChangeExtension(screenshotPath, "dark.png"));
                 await VerifyBusyAppearanceAsync(window, viewModel, Path.ChangeExtension(screenshotPath, "busy.png"));
+                await VerifyVersionViewsAsync(window, viewModel, screenshotPath);
                 Console.WriteLine("黑夜模式、按钮切换和配置保存检查通过。");
             }
             catch (Exception ex) { errors++; Console.Error.WriteLine("界面检查失败：" + ex); }
-            finally { window.Close(); }
+            finally { app.Shutdown(); }
         };
         app.Run(window);
         if (errors > 0) throw new InvalidOperationException("界面检查未通过。");
@@ -192,8 +197,9 @@ internal static partial class Program
     private static void SaveScreenshot(Window window, string screenshotPath)
     {
         window.UpdateLayout();
-        var image = new RenderTargetBitmap((int)window.ActualWidth, (int)window.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-        image.Render(window);
+        var content = (FrameworkElement)window.Content;
+        var image = new RenderTargetBitmap((int)content.ActualWidth, (int)content.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        image.Render(content);
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(screenshotPath))!);
         using (var stream = File.Create(screenshotPath)) encoder.Save(stream);

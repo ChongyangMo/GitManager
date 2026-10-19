@@ -1,0 +1,9 @@
+<UserControl x:Class="GitManager.Views.Versions.RemoteHistoryView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="3*" /><RowDefinition Height="5" /><RowDefinition Height="2*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <ListBox ItemsSource="{Binding RemoteHistory}" SelectedItem="{Binding SelectedRemoteCommit}" Style="{StaticResource WorkspaceList}" ItemTemplate="{StaticResource CommitRowTemplate}" SelectionChanged="CommitChanged" />
+        <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" Background="{DynamicResource BorderBrush}" />
+        <ListBox Grid.Row="2" ItemsSource="{Binding RemoteFiles}" SelectedItem="{Binding SelectedRemoteFile}" Style="{StaticResource WorkspaceList}" ItemTemplate="{StaticResource VersionFileTemplate}" SelectionChanged="FileChanged" />
+        <Border Grid.Row="3" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="12"><StackPanel Orientation="Horizontal"><Button Content="对比到本地" Style="{StaticResource WorkspaceButton}" Margin="0,0,8,0" Click="CompareClicked" /><Button Content="恢复此版本" Style="{StaticResource WorkspaceButton}" Click="RestoreClicked" /></StackPanel></Border>
+    </Grid>
+</UserControl>

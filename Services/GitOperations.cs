@@ -45,20 +45,7 @@ public sealed partial class GitRepositoryService
 
     public async Task SynchronizeAsync(string root, string operation)
     {
-        string remote = await ReadConfigAsync(root, "remote.origin.url");
-        if (string.IsNullOrWhiteSpace(remote)) throw new InvalidOperationException("请先通过“远程”设置 origin 仓库地址。");
-        if (operation == "fetch") { await Run(root, "fetch", "origin"); return; }
-        await EnsureNoOperationAsync(root);
-        var branch = await Runner.RunAsync(root, ["symbolic-ref", "--quiet", "--short", "HEAD"], true);
-        if (branch.ExitCode != 0) throw new InvalidOperationException("当前处于分离 HEAD 状态，请先切换到分支。");
-        if (operation == "push") await Run(root, "push", "--set-upstream", "origin", branch.Output.Trim());
-        else if (operation == "pull")
-        {
-            if ((await ReadChangesAsync(root)).Count > 0) throw new InvalidOperationException("请先提交当前修改，再拉取远程代码。");
-            await Run(root, "pull", "--ff-only", "origin", branch.Output.Trim());
-        }
-        else throw new InvalidOperationException("不支持的同步操作。");
-        AppLog.Write(operation == "push" ? "远程推送完成" : "远程拉取完成");
+        await SynchronizeVersionsAsync(root, null, operation);
     }
 
     public async Task EnsureNoOperationAsync(string root)

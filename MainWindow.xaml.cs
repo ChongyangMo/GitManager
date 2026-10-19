@@ -63,7 +63,7 @@ public partial class MainWindow : Window
     private async void ChangeSelected(object sender, SelectionChangedEventArgs e) { if (!ViewModel.IsBusy) await ViewModel.ShowChangeAsync(); }
     private async void CommitSelected(object sender, SelectionChangedEventArgs e) { if (!ViewModel.IsBusy) await ViewModel.ShowCommitAsync(); }
     private async void HistoryFileSelected(object sender, SelectionChangedEventArgs e) { if (!ViewModel.IsBusy) await ViewModel.ShowChangeAsync(); }
-    private async void TabChanged(object sender, SelectionChangedEventArgs e) { if (e.Source == WorkspaceTabs && !ViewModel.IsBusy) await ViewModel.ShowChangeAsync(); }
+    private async void TabChanged(object sender, SelectionChangedEventArgs e) { if (e.Source == WorkspaceTabs && !ViewModel.IsBusy) await ViewModel.ShowActiveTabAsync(); }
     private async void BranchChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!IsLoaded || ViewModel.IsBusy || !ViewModel.HasRepository || BranchBox.SelectedItem is not string branch) return;

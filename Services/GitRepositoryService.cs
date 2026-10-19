@@ -48,10 +48,7 @@ public sealed partial class GitRepositoryService(GitRunner runner)
         List<CommitInfo> commits = [];
         if (head.ExitCode == 0)
         {
-            string text = (await Run(root, "log", "-n", "300", "--date-order", "--format=%H%x00%h%x00%an%x00%aI%x00%s%x00%P%x00")).Output;
-            string[] fields = text.Split('\0');
-            for (int i = 0; i + 5 < fields.Length; i += 6)
-                commits.Add(new(fields[i].TrimStart('\r', '\n'), fields[i + 1], fields[i + 2], fields[i + 3], fields[i + 4], fields[i + 5]));
+            commits = await ReadCommitsAsync(root, head.Output.Trim());
         }
         return new(current, branches, changes, commits, await ReadConfigAsync(root, "remote.origin.url"), await ReadConfigAsync(root, "user.name"), await ReadConfigAsync(root, "user.email"), head.ExitCode == 0);
     }

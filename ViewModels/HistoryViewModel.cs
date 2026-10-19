@@ -13,12 +13,22 @@ public sealed partial class MainViewModel
 
     private async Task LoadComparisonCoreAsync()
     {
-        Comparison = ActiveTab == 0
-            ? SelectedChange is null ? null : await Git.CompareWorkingAsync(Root, SelectedChange, _hasHead)
-            : SelectedCommit is null || SelectedHistoryFile is null ? null : await Git.CompareHistoryAsync(Root, SelectedCommit, SelectedHistoryFile);
+        Comparison = ActiveTab switch
+        {
+            0 => SelectedChange is null ? null : await Git.CompareWorkingAsync(Root, SelectedChange, _hasHead),
+            1 => SelectedCommit is null || SelectedHistoryFile is null ? null : await Git.CompareHistoryAsync(Root, SelectedCommit, SelectedHistoryFile),
+            2 => SelectedRemoteCommit is null || SelectedRemoteFile is null ? null : await Git.CompareHistoryAsync(Root, SelectedRemoteCommit, SelectedRemoteFile),
+            _ => await ReadVersionComparisonCoreAsync()
+        };
     }
 
     public Task ShowChangeAsync() => !HasRepository ? Task.CompletedTask : ExecuteAsync("正在读取文件差异", LoadComparisonCoreAsync);
+    public Task ShowActiveTabAsync() => !HasRepository ? Task.CompletedTask : ExecuteAsync("正在读取版本", async () =>
+    {
+        if (ActiveTab == 2) await LoadRemoteFilesCoreAsync();
+        if (ActiveTab == 3) await LoadVersionFilesCoreAsync();
+        await LoadComparisonCoreAsync();
+    });
     public Task ShowCommitAsync() => !HasRepository ? Task.CompletedTask : ExecuteAsync("正在读取版本", async () =>
     {
         await LoadHistoryFilesCoreAsync();

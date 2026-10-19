@@ -1,0 +1,17 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DataTemplate x:Key="CommitRowTemplate">
+        <StackPanel ToolTip="{Binding Subject}">
+            <TextBlock Text="{Binding Subject}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+            <DockPanel Margin="0,7,0,0">
+                <TextBlock DockPanel.Dock="Right" Text="{Binding DisplayDate}" Foreground="{DynamicResource MutedBrush}" FontSize="11" />
+                <TextBlock TextTrimming="CharacterEllipsis" Foreground="{DynamicResource MutedBrush}" FontSize="11"><Run Text="{Binding ShortHash}" /><Run Text="  " /><Run Text="{Binding Author}" /></TextBlock>
+            </DockPanel>
+        </StackPanel>
+    </DataTemplate>
+    <DataTemplate x:Key="VersionFileTemplate">
+        <DockPanel ToolTip="{Binding Path}">
+            <TextBlock DockPanel.Dock="Right" Text="{Binding State}" Foreground="{DynamicResource MutedBrush}" Margin="8,0,0,0" />
+            <TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+    </DataTemplate>
+</ResourceDictionary>
