@@ -23,6 +23,7 @@
         <Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" />
     </Style>
     <Style x:Key="WorkspaceRow" TargetType="ListBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Padding" Value="10,9" />
         <Setter Property="Margin" Value="4,1" />
@@ -37,7 +38,33 @@
             </ControlTemplate.Triggers>
         </ControlTemplate></Setter.Value></Setter>
     </Style>
-    <Style x:Key="WorkspaceList" TargetType="ListBox">
+    <Style x:Key="ThemedListBase" TargetType="ListBox">
+        <Setter Property="Background" Value="{DynamicResource CardBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBox">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            SnapsToDevicePixels="True">
+                        <ScrollViewer x:Name="PART_ScrollViewer" Focusable="False"
+                                      Background="{TemplateBinding Background}"
+                                      Padding="{TemplateBinding Padding}"
+                                      CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}"
+                                      HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
+                                      VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}">
+                            <ItemsPresenter SnapsToDevicePixels="True" />
+                        </ScrollViewer>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="ListBox" BasedOn="{StaticResource ThemedListBase}" />
+    <Style x:Key="WorkspaceList" TargetType="ListBox" BasedOn="{StaticResource ThemedListBase}">
         <Setter Property="BorderThickness" Value="0" /><Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="ItemContainerStyle" Value="{StaticResource WorkspaceRow}" />
@@ -60,10 +87,11 @@
     <Style TargetType="TabControl">
         <Setter Property="Background" Value="{DynamicResource CardBrush}" />
         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabControl">
-            <DockPanel><Border DockPanel.Dock="Top" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"><TabPanel IsItemsHost="True" /></Border><ContentPresenter ContentSource="SelectedContent" /></DockPanel>
+            <Border Background="{TemplateBinding Background}"><DockPanel><Border DockPanel.Dock="Top" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"><TabPanel IsItemsHost="True" /></Border><ContentPresenter ContentSource="SelectedContent" TextElement.Foreground="{DynamicResource TextBrush}" /></DockPanel></Border>
         </ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style x:Key="DiffItem" TargetType="ListBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="Padding" Value="0" /><Setter Property="MinHeight" Value="21" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><ContentPresenter /></ControlTemplate></Setter.Value></Setter>

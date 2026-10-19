@@ -29,15 +29,18 @@ public sealed partial class MainViewModel
 
     private async Task RefreshCoreAsync()
     {
-        string? selectedPath = SelectedChange?.Path, selectedHash = SelectedCommit?.Hash;
-        var selectedPaths = Changes.Where(item => item.Selected).Select(item => item.Path).ToHashSet(StringComparer.Ordinal);
+        bool sameRepository = string.Equals(_snapshotRoot, Root, StringComparison.OrdinalIgnoreCase);
+        string? selectedPath = sameRepository ? SelectedChange?.Path : null, selectedHash = sameRepository ? SelectedCommit?.Hash : null;
+        var selectedPaths = sameRepository ? Changes.Where(item => item.Selected).Select(item => item.Path).ToHashSet(StringComparer.Ordinal) : [];
+        var previousChanges = sameRepository ? Changes.ToDictionary(item => item.Path, StringComparer.Ordinal) : new Dictionary<string, ChangedFile>();
         var snapshot = await Git.ReadAsync(Root);
+        _snapshotRoot = Root;
         _hasHead = snapshot.HasHead;
-        Branch = snapshot.Branch;
         Replace(Branches, snapshot.Branches);
+        Branch = snapshot.Branch;
         Remote = snapshot.Remote;
         UserName = snapshot.UserName; UserEmail = snapshot.UserEmail;
-        Replace(Changes, snapshot.Changes);
+        Replace(Changes, snapshot.Changes.Select(item => previousChanges.TryGetValue(item.Path, out var previous) && previous.OriginalPath == item.OriginalPath && previous.IndexState == item.IndexState && previous.WorktreeState == item.WorktreeState ? previous : item));
         foreach (var file in Changes) file.Selected = selectedPaths.Contains(file.Path);
         Replace(History, snapshot.History);
         SelectedChange = Changes.FirstOrDefault(item => item.Path == selectedPath) ?? Changes.FirstOrDefault();

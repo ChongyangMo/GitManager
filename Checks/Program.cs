@@ -10,7 +10,7 @@ using GitManager.ViewModels;
 
 namespace GitManager.Checks;
 
-internal static class Program
+internal static partial class Program
 {
     private static readonly GitRunner Runner = new(() => @"C:\Program Files\Git\cmd\git.exe");
     private static readonly GitRepositoryService Git = new(Runner);
@@ -179,6 +179,7 @@ internal static class Program
                 if (!ThemeService.IsDark) throw new InvalidOperationException("一键切换黑夜模式未生效。");
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 SaveScreenshot(window, Path.ChangeExtension(screenshotPath, "dark.png"));
+                await VerifyBusyAppearanceAsync(window, viewModel, Path.ChangeExtension(screenshotPath, "busy.png"));
                 Console.WriteLine("黑夜模式、按钮切换和配置保存检查通过。");
             }
             catch (Exception ex) { errors++; Console.Error.WriteLine("界面检查失败：" + ex); }

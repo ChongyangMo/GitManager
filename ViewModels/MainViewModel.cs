@@ -17,6 +17,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool _busy, _hasHead;
     private string _status = "添加本地仓库开始使用", _branch = "", _remote = "", _userName = "", _userEmail = "", _commitMessage = "";
     private RepositoryBookmark? _repository;
+    private string? _snapshotRoot;
     private ChangedFile? _selectedChange;
     private CommitInfo? _selectedCommit;
     private HistoryFile? _selectedHistoryFile;
@@ -45,7 +46,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public FileComparison? Comparison
     {
         get => _comparison;
-        private set { Set(ref _comparison, value); DiffRows = value is null ? [] : DiffBuilder.Build(value); }
+        private set { if (Set(ref _comparison, value)) DiffRows = value is null ? [] : DiffBuilder.Build(value); }
     }
 
     public MainViewModel(SettingsStore settings)
@@ -83,7 +84,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private static void Replace<T>(ObservableCollection<T> destination, IEnumerable<T> source)
     {
-        destination.Clear();
-        foreach (T item in source) destination.Add(item);
+        T[] items = source.ToArray();
+        for (int i = 0; i < items.Length; i++)
+        {
+            if (i < destination.Count && EqualityComparer<T>.Default.Equals(destination[i], items[i])) continue;
+            int existingIndex = destination.IndexOf(items[i]);
+            if (existingIndex >= 0) destination.Move(existingIndex, i);
+            else destination.Insert(i, items[i]);
+        }
+        while (destination.Count > items.Length) destination.RemoveAt(destination.Count - 1);
     }
 }
