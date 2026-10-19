@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="GitManager.csproj" />
+  <Project Path="Checks/GitManager.Checks.csproj" />
+</Solution>

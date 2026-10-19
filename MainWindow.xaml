@@ -1,0 +1,56 @@
+<Window x:Class="GitManager.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:views="clr-namespace:GitManager.Views" Title="GitManager" Width="1380" Height="860" MinWidth="1080" MinHeight="650" WindowStartupLocation="CenterScreen" Style="{StaticResource WorkspaceWindow}" AllowDrop="True" Drop="RepositoryDropped" KeyDown="WindowKeyDown">
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="32" /></Grid.RowDefinitions>
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="214" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+                <DockPanel IsEnabled="{Binding IsIdle}">
+                    <StackPanel DockPanel.Dock="Top" Margin="16,22,16,18">
+                        <DockPanel Margin="4,0,0,22"><Border Background="{DynamicResource AccentBrush}" CornerRadius="7" Width="28" Height="28" Margin="0,0,10,0"><TextBlock Text="G" Foreground="White" FontWeight="Bold" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><TextBlock Text="GitManager" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" /></DockPanel>
+                        <Button Content="添加仓库" Style="{StaticResource WorkspaceButton}" HorizontalAlignment="Stretch" Click="AddMenuClicked"><Button.ContextMenu><ContextMenu><MenuItem Header="添加本地仓库" Click="AddRepositoryClicked" /><MenuItem Header="新建仓库" Click="CreateRepositoryClicked" /><MenuItem Header="克隆仓库" Click="CloneRepositoryClicked" /></ContextMenu></Button.ContextMenu></Button>
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Bottom" Margin="12,12,12,16"><Button Content="设置" Style="{StaticResource QuietButton}" HorizontalAlignment="Stretch" Click="SettingsClicked" /><Button Content="打开日志" Style="{StaticResource QuietButton}" HorizontalAlignment="Stretch" Click="LogsClicked" /></StackPanel>
+                    <ListBox x:Name="RepositoryList" ItemsSource="{Binding Repositories}" SelectedItem="{Binding Repository, Mode=OneWay}" Style="{StaticResource WorkspaceList}" SelectionChanged="RepositoryChanged">
+                        <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}" /></DataTemplate></ListBox.ItemTemplate>
+                        <ListBox.ContextMenu><ContextMenu><MenuItem Header="移除记录" Click="RemoveRepositoryClicked" /></ContextMenu></ListBox.ContextMenu>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions><RowDefinition Height="64" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Background="{DynamicResource CardBrush}">
+                    <DockPanel Margin="18,0" IsEnabled="{Binding CanOperate}">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"><Button Content="远程" Style="{StaticResource QuietButton}" ToolTip="{Binding Remote}" Click="RemoteClicked" Margin="0,0,8,0" /><Button Content="获取" Style="{StaticResource WorkspaceButton}" Click="FetchClicked" Margin="0,0,8,0" /><Button Content="拉取" Style="{StaticResource WorkspaceButton}" Click="PullClicked" Margin="0,0,8,0" /><Button Content="推送" Style="{StaticResource PrimaryButton}" MinHeight="34" Click="PushClicked" /></StackPanel>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><ComboBox x:Name="BranchBox" ItemsSource="{Binding Branches}" SelectedItem="{Binding Branch}" Width="160" MinHeight="32" Margin="0,0,8,0" SelectionChanged="BranchChanged" ToolTip="当前分支" /><Button Content="新分支" Style="{StaticResource QuietButton}" Click="NewBranchClicked" Margin="0,0,6,0" /><Button Content="刷新" Style="{StaticResource QuietButton}" Click="RefreshClicked" ToolTip="F5" /><Button Content="恢复点" Style="{StaticResource QuietButton}" Click="RecoveryClicked" /></StackPanel>
+                    </DockPanel>
+                </Border>
+                <Grid Grid.Row="1" IsEnabled="{Binding CanOperate}">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="360" MinWidth="285" /><ColumnDefinition Width="5" /><ColumnDefinition Width="*" MinWidth="360" /></Grid.ColumnDefinitions>
+                    <TabControl x:Name="WorkspaceTabs" SelectedIndex="{Binding ActiveTab}" SelectionChanged="TabChanged">
+                        <TabItem Header="{Binding ChangesTitle}">
+                            <DockPanel>
+                                <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="16">
+                                    <StackPanel><TextBlock Text="提交说明" Margin="0,0,0,8" /><TextBox x:Name="CommitInput" Text="{Binding CommitMessage, UpdateSourceTrigger=PropertyChanged}" Height="76" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top" /><DockPanel Margin="0,12,0,0"><Button DockPanel.Dock="Right" Content="提交到本地" Style="{StaticResource PrimaryButton}" MinHeight="34" Click="CommitClicked" /><StackPanel Orientation="Horizontal"><Button Content="全选" Style="{StaticResource QuietButton}" MinWidth="46" Padding="5,0" Click="SelectAllClicked" /><Button Content="取消" Style="{StaticResource QuietButton}" MinWidth="46" Padding="5,0" Click="SelectNoneClicked" /></StackPanel></DockPanel></StackPanel>
+                                </Border>
+                                <Grid><ListBox x:Name="ChangesList" ItemsSource="{Binding Changes}" SelectedItem="{Binding SelectedChange}" Style="{StaticResource WorkspaceList}" SelectionChanged="ChangeSelected"><ListBox.ItemTemplate><DataTemplate><Grid ToolTip="{Binding Path}"><Grid.ColumnDefinitions><ColumnDefinition Width="24" /><ColumnDefinition /><ColumnDefinition Width="52" /></Grid.ColumnDefinitions><CheckBox IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Text="{Binding Path}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" /><TextBlock Grid.Column="2" Text="{Binding State}" TextAlignment="Right" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" /></Grid></DataTemplate></ListBox.ItemTemplate></ListBox><TextBlock Text="没有未提交改动" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" IsHitTestVisible="False"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding Changes.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></Grid>
+                            </DockPanel>
+                        </TabItem>
+                        <TabItem Header="{Binding HistoryTitle}">
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="3*" /><RowDefinition Height="5" /><RowDefinition Height="2*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <ListBox x:Name="HistoryList" ItemsSource="{Binding History}" SelectedItem="{Binding SelectedCommit}" Style="{StaticResource WorkspaceList}" SelectionChanged="CommitSelected"><ListBox.ItemTemplate><DataTemplate><StackPanel ToolTip="{Binding Subject}"><TextBlock Text="{Binding Subject}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" /><DockPanel Margin="0,7,0,0"><TextBlock DockPanel.Dock="Right" Text="{Binding DisplayDate}" Foreground="{DynamicResource MutedBrush}" FontSize="11" /><TextBlock TextTrimming="CharacterEllipsis" Foreground="{DynamicResource MutedBrush}" FontSize="11"><Run Text="{Binding ShortHash}" /><Run Text="  " /><Run Text="{Binding Author}" /></TextBlock></DockPanel></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
+                                <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" Background="{DynamicResource BorderBrush}" />
+                                <ListBox x:Name="HistoryFilesList" Grid.Row="2" ItemsSource="{Binding HistoryFiles}" SelectedItem="{Binding SelectedHistoryFile}" Style="{StaticResource WorkspaceList}" SelectionChanged="HistoryFileSelected"><ListBox.ItemTemplate><DataTemplate><DockPanel ToolTip="{Binding Path}"><TextBlock DockPanel.Dock="Right" Text="{Binding State}" Foreground="{DynamicResource MutedBrush}" Margin="8,0,0,0" /><TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" /></DockPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
+                                <Border Grid.Row="3" Padding="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"><StackPanel Orientation="Horizontal"><Button Content="恢复此文件" Style="{StaticResource WorkspaceButton}" Margin="0,0,8,0" Click="RestoreFileClicked" /><Button Content="恢复此版本" Style="{StaticResource WorkspaceButton}" Click="RestoreVersionClicked" /></StackPanel></Border>
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
+                    <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="{DynamicResource BorderBrush}" />
+                    <views:DiffViewer Grid.Column="2" Rows="{Binding DiffRows}" Comparison="{Binding Comparison}" />
+                </Grid>
+                <TextBlock Grid.Row="1" Text="添加仓库" FontSize="20" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding HasRepository}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+            </Grid>
+        </Grid>
+        <Border Grid.Row="1" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"><DockPanel Margin="14,0"><ProgressBar DockPanel.Dock="Left" Width="70" Height="3" IsIndeterminate="True" Margin="0,0,10,0" Visibility="{Binding IsBusy, Converter={StaticResource BoolVisibility}}" /><TextBlock Text="{Binding Status}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Status}" Foreground="{DynamicResource MutedBrush}" /></DockPanel></Border>
+    </Grid>
+</Window>
