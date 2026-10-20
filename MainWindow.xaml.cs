@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -21,7 +20,6 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         ThemeService.Attach(this);
-        Closing += WindowClosing;
         Closed += (_, _) => viewModel.Dispose();
     }
     private string? ChooseFolder(string title)
@@ -127,11 +125,5 @@ public partial class MainWindow : Window
     {
         if (!ViewModel.IsBusy && e.Data.GetData(DataFormats.FileDrop) is string[] paths)
             foreach (string path in paths.Where(Directory.Exists)) await ViewModel.OpenRepositoryAsync(path);
-    }
-    private void WindowClosing(object? sender, CancelEventArgs e)
-    {
-        if (!ViewModel.IsBusy) return;
-        e.Cancel = true;
-        MessageBox.Show(this, "正在执行 Git 操作，请等待完成后再退出。", "操作进行中", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 }

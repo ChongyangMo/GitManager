@@ -21,6 +21,7 @@ internal static partial class Program
     {
         try
         {
+            if (args.Length == 1 && args[0] == "--tray") { RunTrayChecks(); return 0; }
             if (args.Length == 3 && args[0] == "--ui") { RenderPreview(args[1], args[2]); return 0; }
             if (args.Length == 1 && args[0] == "--versions") { RunVersionChecksAsync().GetAwaiter().GetResult(); return 0; }
             string testRoot = RunChecksAsync().GetAwaiter().GetResult();

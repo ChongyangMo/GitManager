@@ -1,6 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <BooleanToVisibilityConverter x:Key="BoolVisibility" />
     <Style x:Key="WorkspaceWindow" TargetType="Window">
+        <Setter Property="Icon" Value="pack://application:,,,/GitManager;component/Assets/gitmanager.ico" />
         <Setter Property="Background" Value="{DynamicResource PageBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
