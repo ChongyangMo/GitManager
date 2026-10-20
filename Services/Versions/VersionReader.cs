@@ -15,17 +15,37 @@ public sealed partial class GitRepositoryService
         return commits;
     }
 
-    public async Task<VersionSnapshot> ReadVersionsAsync(string root, RemoteBranch? requested = null)
+    public async Task<VersionSnapshot> ReadVersionsAsync(string root, RemoteBranch? requested = null, RepositorySnapshot? snapshot = null)
     {
-        var branchResult = await Runner.RunAsync(root, ["symbolic-ref", "--quiet", "--short", "HEAD"], true);
-        string localBranch = branchResult.ExitCode == 0 ? branchResult.Output.Trim() : "分离 HEAD";
-        var headResult = await Runner.RunAsync(root, ["rev-parse", "--verify", "HEAD"], true);
-        CommitInfo? local = headResult.ExitCode == 0 ? (await ReadCommitsAsync(root, headResult.Output.Trim(), 1)).First() : null;
-        string metadata = (await Run(root, "rev-parse", "--absolute-git-dir")).Output.Trim();
+        var metadataTask = Run(root, "rev-parse", "--absolute-git-dir");
+        var remotesTask = Run(root, "remote");
+        var referencesTask = Run(root, "for-each-ref", "--format=%(refname)%00%(symref)%00", "refs/remotes/");
+        string localBranch;
+        CommitInfo? local;
+        bool attached;
+        if (snapshot is not null)
+        {
+            localBranch = snapshot.Branch;
+            attached = localBranch != "分离 HEAD";
+            local = snapshot.History.FirstOrDefault();
+        }
+        else
+        {
+            var branchTask = Runner.RunAsync(root, ["symbolic-ref", "--quiet", "--short", "HEAD"], true);
+            var headTask = Runner.RunAsync(root, ["rev-parse", "--verify", "HEAD"], true);
+            await Task.WhenAll(branchTask, headTask);
+            var branchResult = await branchTask;
+            var headResult = await headTask;
+            attached = branchResult.ExitCode == 0;
+            localBranch = attached ? branchResult.Output.Trim() : "分离 HEAD";
+            local = headResult.ExitCode == 0 ? (await ReadCommitsAsync(root, headResult.Output.Trim(), 1)).First() : null;
+        }
+        await Task.WhenAll(metadataTask, remotesTask, referencesTask);
+        string metadata = (await metadataTask).Output.Trim();
         bool merging = File.Exists(Path.Combine(metadata, "MERGE_HEAD"));
-        string[] remotes = (await Run(root, "remote")).Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        string[] remotes = (await remotesTask).Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         List<RemoteBranch> branches = [];
-        string[] references = (await Run(root, "for-each-ref", "--format=%(refname)%00%(symref)%00", "refs/remotes/")).Output.Split('\0');
+        string[] references = (await referencesTask).Output.Split('\0');
         for (int i = 0; i + 1 < references.Length; i += 2)
         {
             string reference = references[i].TrimStart('\r', '\n');
@@ -33,7 +53,7 @@ public sealed partial class GitRepositoryService
             string? remote = remotes.OrderByDescending(name => name.Length).FirstOrDefault(name => reference.StartsWith("refs/remotes/" + name + "/", StringComparison.Ordinal));
             if (remote is not null) branches.Add(new(remote, reference[("refs/remotes/" + remote + "/").Length..]));
         }
-        string upstreamRemote = branchResult.ExitCode == 0 ? await ReadConfigAsync(root, "branch." + localBranch + ".remote") : "";
+        string upstreamRemote = attached ? await ReadConfigAsync(root, "branch." + localBranch + ".remote") : "";
         string remoteName = requested is not null && remotes.Contains(requested.RemoteName) ? requested.RemoteName
             : remotes.Contains(upstreamRemote) ? upstreamRemote : remotes.Contains("origin") ? "origin" : remotes.FirstOrDefault() ?? "";
         string remoteUrl = remoteName.Length == 0 ? "" : await ReadConfigAsync(root, "remote." + remoteName + ".url");
@@ -46,7 +66,7 @@ public sealed partial class GitRepositoryService
                 string merge = await ReadConfigAsync(root, "branch." + localBranch + ".merge");
                 if (merge.StartsWith("refs/heads/", StringComparison.Ordinal)) name = merge[11..];
             }
-            if (name.Length == 0 && branchResult.ExitCode == 0) name = localBranch;
+            if (name.Length == 0 && attached) name = localBranch;
             if (name.Length == 0)
             {
                 var remoteHead = await Runner.RunAsync(root, ["symbolic-ref", "--quiet", "refs/remotes/" + remoteName + "/HEAD"], true);
@@ -77,10 +97,10 @@ public sealed partial class GitRepositoryService
         return new(localBranch, local, remoteName, remoteUrl, target, branches, remoteHistory, ahead, behind, common, merging);
     }
 
-    public async Task FetchVersionsAsync(string root, string remote)
+    public async Task FetchVersionsAsync(string root, string remote, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(remote)) throw new InvalidOperationException("请先设置远程仓库。");
-        await Run(root, "fetch", "--prune", remote, "+refs/heads/*:refs/remotes/" + remote + "/*");
+        await Runner.RunAsync(root, ["fetch", "--prune", remote, "+refs/heads/*:refs/remotes/" + remote + "/*"], cancellationToken: cancellationToken);
         AppLog.Write("已获取远程版本记录");
     }
 }

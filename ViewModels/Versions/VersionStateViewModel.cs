@@ -31,6 +31,7 @@ public sealed partial class MainViewModel
     public string CommitButtonLabel => IsMerging ? "完成合并" : "提交到本地";
     private string FetchKey => Root + "\0" + _versions?.RemoteName + "\0" + _versions?.RemoteUrl;
     public string FetchStateText => !HasRepository || _versions?.HasRemote != true ? "尚未设置远程仓库"
+        : _backgroundFetchKey == FetchKey ? "正在后台获取远程版本"
         : _fetchErrors.ContainsKey(FetchKey) ? "获取失败，显示远程缓存"
         : _fetchedAt.TryGetValue(FetchKey, out var time) ? $"获取于 {time.LocalDateTime:HH:mm:ss}" : "远程缓存，尚未联网检查";
     public string FetchError => HasRepository && _fetchErrors.TryGetValue(FetchKey, out var error) ? error : "";
@@ -42,10 +43,10 @@ public sealed partial class MainViewModel
         : _versions.Ahead == 0 && _versions.Behind == 0 ? "提交已同步"
         : $"待推送 {_versions.Ahead} · 待拉取 {_versions.Behind}";
 
-    private async Task RefreshVersionsCoreAsync()
+    private async Task RefreshVersionsCoreAsync(RepositorySnapshot? snapshot = null)
     {
         bool same = string.Equals(_versionRoot, Root, StringComparison.OrdinalIgnoreCase);
-        var state = await Git.ReadVersionsAsync(Root, same && _versions?.LocalBranch == Branch ? SelectedRemoteBranch : null);
+        var state = await Git.ReadVersionsAsync(Root, same && _versions?.LocalBranch == Branch ? SelectedRemoteBranch : null, snapshot);
         string? selectedHash = same ? SelectedRemoteCommit?.Hash : null;
         _versionRoot = Root;
         _versions = state;

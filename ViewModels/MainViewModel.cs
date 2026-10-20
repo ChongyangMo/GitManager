@@ -15,6 +15,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public ObservableCollection<HistoryFile> HistoryFiles { get; } = [];
     public ObservableCollection<string> Branches { get; } = [];
     private bool _busy, _hasHead;
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
     private string _status = "添加本地仓库开始使用", _branch = "", _remote = "", _userName = "", _userEmail = "", _commitMessage = "";
     private RepositoryBookmark? _repository;
     private string? _snapshotRoot;
@@ -27,7 +28,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public bool IsBusy { get => _busy; private set { Set(ref _busy, value); Notify(nameof(IsIdle)); Notify(nameof(CanOperate)); } }
     public bool IsIdle => !IsBusy;
     public bool HasRepository => Repository is not null;
-    public bool CanOperate => HasRepository && IsIdle;
+    public bool CanOperate => HasRepository && IsIdle && !_workspaceLoading;
     public string Root => Repository?.Path ?? throw new InvalidOperationException("请先选择仓库。");
     public RepositoryBookmark? Repository { get => _repository; private set { Set(ref _repository, value); Notify(nameof(HasRepository)); Notify(nameof(CanOperate)); } }
     public string Status { get => _status; private set => Set(ref _status, value); }
@@ -53,31 +54,61 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         Settings = settings;
         ThemeService.Changed += ThemeChanged;
-        Git = new(new GitRunner(() => Settings.Value.GitExecutablePath));
+        Git = new(new GitRunner(() => Settings.Value.GitExecutablePath, _lifetimeCancellation.Token));
         foreach (string path in settings.Value.Repositories.Distinct(StringComparer.OrdinalIgnoreCase)) Repositories.Add(new(path));
     }
 
     public string ThemeActionText => ThemeService.IsDark ? "白天模式" : "黑夜模式";
     private void ThemeChanged() => Notify(nameof(ThemeActionText));
-    public void Dispose() => ThemeService.Changed -= ThemeChanged;
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _workspaceGeneration++;
+        _backgroundFetchCancellation?.Cancel();
+        _lifetimeCancellation.Cancel();
+        _lifetimeCancellation.Dispose();
+        ThemeService.Changed -= ThemeChanged;
+    }
 
     public async Task ExecuteAsync(string message, Func<Task> action)
     {
         if (IsBusy) return;
         IsBusy = true;
         Status = message;
-        try { await action(); if (Status == message) Status = "就绪"; }
+        try
+        {
+            await PauseWorkspaceRefreshAsync();
+            await StopBackgroundFetchAsync();
+            await action();
+            if (Status == message) Status = "就绪";
+        }
         catch (Exception ex)
         {
             Status = AppLog.Clean(ex.Message);
             AppLog.Write(message + "失败", ex);
             MessageBox.Show(Status, "操作未完成", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
-        finally { IsBusy = false; }
+        finally
+        {
+            CacheCurrentWorkspace();
+            IsBusy = false;
+            if (_refreshAfterOperation)
+            {
+                _refreshAfterOperation = false;
+                StartWorkspaceRefresh(fetchAfter: false);
+            }
+            if (_fetchAfterOperation)
+            {
+                _fetchAfterOperation = false;
+                StartBackgroundFetch();
+            }
+        }
     }
 
     public Task InitializeAsync(string? repository) => ExecuteAsync("正在读取仓库", async () =>
     {
+        await DiscoverRepositoriesCoreAsync();
         string? path = repository ?? Settings.Value.LastRepository ?? Repositories.FirstOrDefault()?.Path;
         if (path is not null) await OpenCoreAsync(path);
     });

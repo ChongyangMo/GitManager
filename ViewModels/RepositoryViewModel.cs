@@ -1,4 +1,5 @@
 using GitManager.Models;
+using GitManager.Services;
 
 namespace GitManager.ViewModels;
 
@@ -6,17 +7,21 @@ public sealed partial class MainViewModel
 {
     private async Task OpenCoreAsync(string path)
     {
+        CacheCurrentWorkspace();
+        var timer = System.Diagnostics.Stopwatch.StartNew();
         string root = await Git.OpenAsync(path);
         var bookmark = Repositories.FirstOrDefault(item => string.Equals(item.Path, root, StringComparison.OrdinalIgnoreCase));
         if (bookmark is null) { bookmark = new(root); Repositories.Add(bookmark); }
         Repository = bookmark;
+        Settings.Value.IgnoredRepositories.RemoveAll(path => string.Equals(path, root, StringComparison.OrdinalIgnoreCase));
         CommitMessage = string.Empty;
         Settings.Value.LastRepository = root;
         SaveBookmarks();
         await RefreshCoreAsync();
-        await FetchRemoteCoreAsync(tolerateFailure: true);
-        await RefreshVersionsCoreAsync();
-        await LoadComparisonCoreAsync();
+        SetWorkspaceLoading(false);
+        _fetchAfterOperation = true;
+        _ = PreloadRepositoriesAsync();
+        AppLog.Write($"仓库本地加载完成：{bookmark.Name}，耗时 {timer.ElapsedMilliseconds} 毫秒");
     }
 
     private void SaveBookmarks()
@@ -25,38 +30,30 @@ public sealed partial class MainViewModel
         Settings.Save();
     }
 
-    public Task OpenRepositoryAsync(string path) => ExecuteAsync("正在打开仓库", () => OpenCoreAsync(path));
     public Task CreateRepositoryAsync(string path) => ExecuteAsync("正在建立仓库", async () => await OpenCoreAsync(await Git.InitializeAsync(path)));
     public Task CloneRepositoryAsync(string url, string destination) => ExecuteAsync("正在克隆仓库", async () => await OpenCoreAsync(await Git.CloneAsync(url, destination)));
-    public Task RefreshAsync() => !HasRepository ? Task.CompletedTask : ExecuteAsync("正在刷新", RefreshCoreAsync);
+    public Task RefreshAsync() => ExecuteAsync("正在刷新", async () =>
+    {
+        await DiscoverRepositoriesCoreAsync();
+        if (HasRepository) await RefreshCoreAsync();
+        else if (Repositories.FirstOrDefault() is { } first) await OpenCoreAsync(first.Path);
+    });
 
     private async Task RefreshCoreAsync()
     {
         bool sameRepository = string.Equals(_snapshotRoot, Root, StringComparison.OrdinalIgnoreCase);
-        string? selectedPath = sameRepository ? SelectedChange?.Path : null, selectedHash = sameRepository ? SelectedCommit?.Hash : null;
-        var selectedPaths = sameRepository ? Changes.Where(item => item.Selected).Select(item => item.Path).ToHashSet(StringComparer.Ordinal) : [];
-        var previousChanges = sameRepository ? Changes.ToDictionary(item => item.Path, StringComparer.Ordinal) : new Dictionary<string, ChangedFile>();
-        var snapshot = await Git.ReadAsync(Root);
-        _snapshotRoot = Root;
-        _hasHead = snapshot.HasHead;
-        Replace(Branches, snapshot.Branches);
-        Branch = snapshot.Branch;
-        Remote = snapshot.Remote;
-        UserName = snapshot.UserName; UserEmail = snapshot.UserEmail;
-        Replace(Changes, snapshot.Changes.Select(item => previousChanges.TryGetValue(item.Path, out var previous) && previous.OriginalPath == item.OriginalPath && previous.IndexState == item.IndexState && previous.WorktreeState == item.WorktreeState ? previous : item));
-        foreach (var file in Changes) file.Selected = selectedPaths.Contains(file.Path);
-        Replace(History, snapshot.History);
-        SelectedChange = Changes.FirstOrDefault(item => item.Path == selectedPath) ?? Changes.FirstOrDefault();
-        SelectedCommit = History.FirstOrDefault(item => item.Hash == selectedHash) ?? History.FirstOrDefault();
-        await LoadHistoryFilesCoreAsync();
-        await RefreshVersionsCoreAsync();
-        await LoadComparisonCoreAsync();
-        Notify(nameof(ChangesTitle)); Notify(nameof(HistoryTitle));
+        var content = await GetWorkspaceRead(Root, sameRepository ? CaptureWorkspaceSelection() : new());
+        ApplyWorkspace(new(content, CommitMessage, sameRepository ? CheckedChangePaths() : []));
+        SetWorkspaceLoading(false);
+        _refreshAfterOperation = false;
     }
 
     public Task RemoveRepositoryAsync(RepositoryBookmark bookmark) => ExecuteAsync("正在移除仓库记录", async () =>
     {
+        if (!Settings.Value.IgnoredRepositories.Contains(bookmark.Path, StringComparer.OrdinalIgnoreCase))
+            Settings.Value.IgnoredRepositories.Add(bookmark.Path);
         Repositories.Remove(bookmark);
+        _workspaceCache.Remove(bookmark.Path);
         if (Repository == bookmark)
         {
             Repository = null;

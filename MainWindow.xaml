@@ -17,6 +17,7 @@
                 </DockPanel>
             </Border>
             <Grid Grid.Column="1">
+                <Grid.Style><Style TargetType="Grid"><Style.Triggers><DataTrigger Binding="{Binding IsWorkspaceLoading}" Value="True"><Setter Property="Visibility" Value="Hidden" /></DataTrigger></Style.Triggers></Style></Grid.Style>
                 <Grid.RowDefinitions><RowDefinition Height="64" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                 <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Background="{DynamicResource CardBrush}">
                     <DockPanel Margin="18,0" IsEnabled="{Binding CanOperate}">

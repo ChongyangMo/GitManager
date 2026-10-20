@@ -31,6 +31,7 @@ public partial class App : Application
             {
                 window.Loaded -= InitializeWindow;
                 await viewModel.InitializeAsync(repository);
+                window.Activated += async (_, _) => await viewModel.DiscoverOnActivationAsync();
             }
             _tray = new TrayService(window);
             window.Show();

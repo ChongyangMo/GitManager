@@ -48,7 +48,6 @@ public partial class MainWindow : Window
     {
         if (ViewModel.IsBusy || RepositoryList.SelectedItem is not RepositoryBookmark repository || repository == ViewModel.Repository) return;
         await ViewModel.OpenRepositoryAsync(repository.Path);
-        RepositoryList.SelectedItem = ViewModel.Repository;
     }
     private async void RemoveRepositoryClicked(object sender, RoutedEventArgs e)
     {

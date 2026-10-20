@@ -8,10 +8,10 @@ public sealed partial class GitRepositoryService(GitRunner runner)
     public GitRunner Runner { get; } = runner;
     private Task<GitResult> Run(string root, params string[] args) => Runner.RunAsync(root, args);
 
-    public async Task<string> OpenAsync(string directory)
+    public async Task<string> OpenAsync(string directory, CancellationToken cancellationToken = default)
     {
         if (!Directory.Exists(directory)) throw new DirectoryNotFoundException("仓库目录不存在。" + directory);
-        var result = await Runner.RunAsync(directory, ["rev-parse", "--show-toplevel"], allowFailure: true);
+        var result = await Runner.RunAsync(directory, ["rev-parse", "--show-toplevel"], allowFailure: true, cancellationToken: cancellationToken);
         if (result.ExitCode != 0) throw new InvalidOperationException("这个目录尚未建立 Git 仓库，请使用“新建仓库”。");
         string root = Path.GetFullPath(result.Output.Trim());
         if (!string.Equals(Path.TrimEndingDirectorySeparator(root), Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory)), StringComparison.OrdinalIgnoreCase))
@@ -39,18 +39,26 @@ public sealed partial class GitRepositoryService(GitRunner runner)
     public async Task<RepositorySnapshot> ReadAsync(string root)
     {
         await OpenAsync(root);
-        var branch = await Runner.RunAsync(root, ["symbolic-ref", "--quiet", "--short", "HEAD"], true);
-        var head = await Runner.RunAsync(root, ["rev-parse", "--verify", "HEAD"], true);
+        var branchTask = Runner.RunAsync(root, ["symbolic-ref", "--quiet", "--short", "HEAD"], true);
+        var headTask = Runner.RunAsync(root, ["rev-parse", "--verify", "HEAD"], true);
+        var branchesTask = Run(root, "for-each-ref", "--format=%(refname:short)", "refs/heads/");
+        var changesTask = ReadChangesAsync(root);
+        var remoteTask = ReadConfigAsync(root, "remote.origin.url");
+        var nameTask = ReadConfigAsync(root, "user.name");
+        var emailTask = ReadConfigAsync(root, "user.email");
+        await Task.WhenAll(branchTask, headTask, branchesTask, changesTask, remoteTask, nameTask, emailTask);
+        var branch = await branchTask;
+        var head = await headTask;
         string current = branch.ExitCode == 0 ? branch.Output.Trim() : "分离 HEAD";
-        var branches = (await Run(root, "for-each-ref", "--format=%(refname:short)", "refs/heads/")).Output.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList();
+        var branches = (await branchesTask).Output.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList();
         if (!branches.Contains(current)) branches.Insert(0, current);
-        var changes = await ReadChangesAsync(root);
+        var changes = await changesTask;
         List<CommitInfo> commits = [];
         if (head.ExitCode == 0)
         {
             commits = await ReadCommitsAsync(root, head.Output.Trim());
         }
-        return new(current, branches, changes, commits, await ReadConfigAsync(root, "remote.origin.url"), await ReadConfigAsync(root, "user.name"), await ReadConfigAsync(root, "user.email"), head.ExitCode == 0);
+        return new(current, branches, changes, commits, await remoteTask, await nameTask, await emailTask, head.ExitCode == 0);
     }
 
     public async Task<List<ChangedFile>> ReadChangesAsync(string root)
