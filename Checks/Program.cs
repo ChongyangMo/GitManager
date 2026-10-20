@@ -21,6 +21,9 @@ internal static partial class Program
     {
         try
         {
+            if (args.Length > 2 && args[0] == "--summary") { RunCommitSummaryChecks(args[1], args[2..]); return 0; }
+            if (args.Length > 2 && args[0] == "--summary-cancel") { RunCommitSummaryChecks(args[1], args[2..], cancelOnly: true); return 0; }
+            if (args.Length == 2 && args[0] == "--history") { RunHistoryNavigationChecks(args[1]); return 0; }
             if (args.Length > 1 && args[0] == "--switching") { RunSwitchingChecks(args[1..]); return 0; }
             if (args.Length == 1 && args[0] == "--discovery") { RunDiscoveryChecksAsync().GetAwaiter().GetResult(); return 0; }
             if (args.Length == 1 && args[0] == "--discover-local") { DiscoverLocalAsync().GetAwaiter().GetResult(); return 0; }

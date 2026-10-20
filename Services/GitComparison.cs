@@ -21,11 +21,13 @@ public sealed partial class GitRepositoryService
     }
 
     public async Task<FileComparison> CompareHistoryAsync(string root, CommitInfo commit, HistoryFile file)
+        => (await ReadHistoryPreviewAsync(root, commit, file)).Comparison;
+
+    private async Task<FileComparison> CompareHistoryCoreAsync(string root, CommitInfo commit, HistoryFile file)
     {
         try
         {
-            string before = commit.FirstParent.Length == 0 ? string.Empty : await ReadBlobAsync(root, commit.FirstParent, file.Path);
-            string after = await ReadBlobAsync(root, commit.Hash, file.Path);
+            var (before, after) = await ReadHistoryTextsAsync(root, commit, file);
             string patch = await CompareTextsAsync(before, after);
             return new(before, after, patch, "上一版本", commit.ShortHash);
         }

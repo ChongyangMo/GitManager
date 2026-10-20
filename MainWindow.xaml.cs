@@ -55,12 +55,28 @@ public partial class MainWindow : Window
     }
     private async void RefreshClicked(object sender, RoutedEventArgs e) => await ViewModel.RefreshAsync();
     private async void CommitClicked(object sender, RoutedEventArgs e) => await ViewModel.CommitAsync();
+    private async void GenerateSummaryClicked(object sender, RoutedEventArgs e) => await ViewModel.GenerateCommitMessageAsync();
     private void SelectAllClicked(object sender, RoutedEventArgs e) { foreach (var file in ViewModel.Changes) file.Selected = true; }
     private void SelectNoneClicked(object sender, RoutedEventArgs e) { foreach (var file in ViewModel.Changes) file.Selected = false; }
     private async void ChangeSelected(object sender, SelectionChangedEventArgs e) { if (!ViewModel.IsBusy) await ViewModel.ShowChangeAsync(); }
-    private async void CommitSelected(object sender, SelectionChangedEventArgs e) { if (!ViewModel.IsBusy) await ViewModel.ShowCommitAsync(); }
-    private async void HistoryFileSelected(object sender, SelectionChangedEventArgs e) { if (!ViewModel.IsBusy) await ViewModel.ShowChangeAsync(); }
-    private async void TabChanged(object sender, SelectionChangedEventArgs e) { if (e.Source == WorkspaceTabs && !ViewModel.IsBusy) await ViewModel.ShowActiveTabAsync(); }
+    private async void CommitSelected(object sender, SelectionChangedEventArgs e)
+    {
+        if (ViewModel.IsBusy || ViewModel.IsUpdatingHistorySelection || sender is not ListBox list) return;
+        ViewModel.SelectedCommit = list.SelectedItem as CommitInfo;
+        await ViewModel.ShowCommitAsync();
+    }
+    private async void HistoryFileSelected(object sender, SelectionChangedEventArgs e)
+    {
+        if (ViewModel.IsBusy || ViewModel.IsUpdatingHistorySelection || sender is not ListBox list) return;
+        ViewModel.SelectedHistoryFile = list.SelectedItem as HistoryFile;
+        await ViewModel.ShowChangeAsync();
+    }
+    private async void TabChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.Source != WorkspaceTabs || ViewModel.IsBusy) return;
+        ViewModel.ActiveTab = WorkspaceTabs.SelectedIndex;
+        await ViewModel.ShowActiveTabAsync();
+    }
     private async void BranchChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!IsLoaded || ViewModel.IsBusy || !ViewModel.HasRepository || BranchBox.SelectedItem is not string branch) return;

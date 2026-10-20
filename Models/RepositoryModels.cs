@@ -31,3 +31,4 @@ public sealed record RecoveryPoint(string Hash, string Reference, string Message
 public sealed record GitResult(int ExitCode, string Output, string Error);
 public sealed record RepositorySnapshot(string Branch, List<string> Branches, List<ChangedFile> Changes, List<CommitInfo> History, string Remote, string UserName, string UserEmail, bool HasHead);
 public sealed record FileComparison(string Before, string After, string Patch, string BeforeLabel, string AfterLabel, string? Notice = null);
+public sealed record HistoryPreview(FileComparison Comparison, List<DiffRow> Rows);

@@ -108,9 +108,5 @@ public sealed partial class MainViewModel
         await LoadComparisonCoreAsync();
     });
 
-    public Task ShowRemoteCommitAsync() => ExecuteAsync("正在读取远程版本", async () =>
-    {
-        await LoadRemoteFilesCoreAsync();
-        await LoadComparisonCoreAsync();
-    });
+    public Task ShowRemoteCommitAsync() => NavigateHistoryAsync(remote: true, loadFiles: true);
 }

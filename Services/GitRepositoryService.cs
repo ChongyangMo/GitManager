@@ -61,9 +61,9 @@ public sealed partial class GitRepositoryService(GitRunner runner)
         return new(current, branches, changes, commits, await remoteTask, await nameTask, await emailTask, head.ExitCode == 0);
     }
 
-    public async Task<List<ChangedFile>> ReadChangesAsync(string root)
+    public async Task<List<ChangedFile>> ReadChangesAsync(string root, CancellationToken cancellationToken = default)
     {
-        string output = (await Run(root, "status", "--porcelain=v1", "-z", "--untracked-files=all")).Output;
+        string output = (await Runner.RunAsync(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all"], cancellationToken: cancellationToken)).Output;
         string[] entries = output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
         List<ChangedFile> result = [];
         for (int i = 0; i < entries.Length; i++)
@@ -84,6 +84,9 @@ public sealed partial class GitRepositoryService(GitRunner runner)
     }
 
     public async Task<List<HistoryFile>> ReadHistoryFilesAsync(string root, CommitInfo commit)
+        => (await _historyFiles.GetAsync(HistoryKey(root, commit.Hash + "\0" + commit.FirstParent), () => ReadHistoryFilesCoreAsync(root, commit))).ToList();
+
+    private async Task<List<HistoryFile>> ReadHistoryFilesCoreAsync(string root, CommitInfo commit)
     {
         string[] args = commit.FirstParent.Length == 0
             ? ["diff-tree", "--root", "--no-commit-id", "--name-status", "--no-renames", "-r", "-z", commit.Hash, "--"]

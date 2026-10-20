@@ -36,7 +36,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public string Remote { get => _remote; private set => Set(ref _remote, value); }
     public string UserName { get => _userName; private set => Set(ref _userName, value); }
     public string UserEmail { get => _userEmail; private set => Set(ref _userEmail, value); }
-    public string CommitMessage { get => _commitMessage; set => Set(ref _commitMessage, value); }
+    public string CommitMessage { get => _commitMessage; set { if (Set(ref _commitMessage, value)) _commitMessageRevision++; } }
     public ChangedFile? SelectedChange { get => _selectedChange; set { Set(ref _selectedChange, value); Notify(nameof(CanResolveSelected)); } }
     public CommitInfo? SelectedCommit { get => _selectedCommit; set => Set(ref _selectedCommit, value); }
     public HistoryFile? SelectedHistoryFile { get => _selectedHistoryFile; set => Set(ref _selectedHistoryFile, value); }
@@ -64,6 +64,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        CancelCommitSummary();
+        InvalidateHistoryNavigation();
         _workspaceGeneration++;
         _backgroundFetchCancellation?.Cancel();
         _lifetimeCancellation.Cancel();
@@ -74,6 +76,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public async Task ExecuteAsync(string message, Func<Task> action)
     {
         if (IsBusy) return;
+        InvalidateHistoryNavigation();
         IsBusy = true;
         Status = message;
         try

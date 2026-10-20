@@ -7,6 +7,7 @@ public sealed partial class MainViewModel
 {
     private async Task OpenCoreAsync(string path)
     {
+        CancelCommitSummary();
         CacheCurrentWorkspace();
         var timer = System.Diagnostics.Stopwatch.StartNew();
         string root = await Git.OpenAsync(path);
@@ -56,6 +57,7 @@ public sealed partial class MainViewModel
         _workspaceCache.Remove(bookmark.Path);
         if (Repository == bookmark)
         {
+            CancelCommitSummary();
             Repository = null;
             ClearVersions();
             Changes.Clear(); History.Clear(); HistoryFiles.Clear(); Branches.Clear();
@@ -73,14 +75,18 @@ public sealed partial class MainViewModel
         finally { await RefreshCoreAsync(); }
     });
 
-    public Task CommitAsync() => ExecuteAsync("正在保存本地版本", async () =>
+    public Task CommitAsync()
     {
-        if (IsMerging) await Git.FinishMergeAsync(Root, CommitMessage);
-        else await Git.CommitAsync(Root, Changes.Where(item => item.Selected).ToArray(), CommitMessage);
-        CommitMessage = "";
-        await RefreshCoreAsync();
-        Status = "已保存到本地";
-    });
+        CancelCommitSummary();
+        return ExecuteAsync("正在保存本地版本", async () =>
+        {
+            if (IsMerging) await Git.FinishMergeAsync(Root, CommitMessage);
+            else await Git.CommitAsync(Root, Changes.Where(item => item.Selected).ToArray(), CommitMessage);
+            CommitMessage = "";
+            await RefreshCoreAsync();
+            Status = "已保存到本地";
+        });
+    }
 
     public Task SynchronizeAsync(string operation) => RunVersionSyncAsync(operation);
 

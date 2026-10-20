@@ -23,6 +23,8 @@ public sealed partial class MainViewModel
     public Task OpenRepositoryAsync(string path)
     {
         if (IsBusy || _disposed) return Task.CompletedTask;
+        CancelCommitSummary();
+        InvalidateHistoryNavigation();
         var bookmark = Repositories.FirstOrDefault(item => string.Equals(item.Path, Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase));
         if (bookmark is null) return ExecuteAsync("正在打开仓库", () => OpenCoreAsync(path));
         CacheCurrentWorkspace();

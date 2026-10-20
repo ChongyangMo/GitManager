@@ -11,12 +11,14 @@ public partial class RemoteHistoryView : UserControl
     private async void CommitChanged(object sender, SelectionChangedEventArgs e)
     {
         if (DataContext is not MainViewModel { IsBusy: false, HasRepository: true } vm || sender is not ListBox list) return;
+        if (vm.IsUpdatingHistorySelection) return;
         vm.SelectedRemoteCommit = list.SelectedItem as CommitInfo;
         await vm.ShowRemoteCommitAsync();
     }
     private async void FileChanged(object sender, SelectionChangedEventArgs e)
     {
         if (DataContext is not MainViewModel { IsBusy: false, HasRepository: true } vm || sender is not ListBox list) return;
+        if (vm.IsUpdatingHistorySelection) return;
         vm.SelectedRemoteFile = list.SelectedItem as HistoryFile;
         await vm.ShowChangeAsync();
     }
