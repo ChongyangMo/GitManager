@@ -37,12 +37,14 @@ public sealed partial class MainViewModel
         long revision = _commitMessageRevision, generation = ++_commitSummaryGeneration;
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCancellation.Token);
         _commitSummaryCancellation = cancellation;
+        SetSummaryCost(null);
         Notify(nameof(IsGeneratingCommitMessage)); Notify(nameof(GenerateCommitMessageLabel));
         Status = "正在总结勾选改动";
         try
         {
             var result = await new CommitMessageGenerator(Git, Settings).GenerateAsync(root, selected, cancellation.Token);
             if (_disposed || generation != _commitSummaryGeneration || Repository?.Path != root) return;
+            SetSummaryCost(result.Cost);
             if (_commitMessageRevision != revision)
             {
                 Status = "提交说明已手动修改，保留当前内容";

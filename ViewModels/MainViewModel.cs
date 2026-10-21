@@ -30,7 +30,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public bool HasRepository => Repository is not null;
     public bool CanOperate => HasRepository && IsIdle && !_workspaceLoading;
     public string Root => Repository?.Path ?? throw new InvalidOperationException("请先选择仓库。");
-    public RepositoryBookmark? Repository { get => _repository; private set { Set(ref _repository, value); Notify(nameof(HasRepository)); Notify(nameof(CanOperate)); } }
+    public RepositoryBookmark? Repository { get => _repository; private set { if (Set(ref _repository, value)) SetSummaryCost(null); Notify(nameof(HasRepository)); Notify(nameof(CanOperate)); } }
     public string Status { get => _status; private set => Set(ref _status, value); }
     public string Branch { get => _branch; set => Set(ref _branch, value); }
     public string Remote { get => _remote; private set { if (Set(ref _remote, value)) Notify(nameof(RemoteDisplay)); } }

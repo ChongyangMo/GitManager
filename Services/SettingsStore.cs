@@ -31,6 +31,7 @@ public sealed class SettingsStore
         Value.RepositoryDiscovery ??= new();
         Value.RepositoryDiscovery.Roots ??= [];
         Value.Qwen ??= new();
+        Value.Qwen.PublicGitHosts ??= [];
         if (Value.ServiceCloud is null)
         {
             string defaults = Path.Combine(AppContext.BaseDirectory, "appsettings.json");

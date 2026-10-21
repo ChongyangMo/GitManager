@@ -9,6 +9,8 @@ public sealed class QwenOptions
     public int MaxInputCharacters { get; set; } = 96000;
     public int MaxFileCharacters { get; set; } = 16000;
     public int TimeoutSeconds { get; set; } = 45;
+    public QwenTokenPricing? Pricing { get; set; } = new();
+    public List<string> PublicGitHosts { get; set; } = ["github.com", "ssh.github.com", "gitlab.com", "gitee.com", "bitbucket.org"];
 
     public Uri Endpoint()
     {

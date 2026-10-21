@@ -11,6 +11,7 @@ public sealed partial class MainViewModel
         CancelCommitSummary();
         return ExecuteAsync("正在保存本地版本", async () =>
         {
+            SetSummaryCost(null);
             if (IsMerging) await Git.FinishMergeAsync(Root, CommitMessage);
             else
             {
@@ -27,6 +28,7 @@ public sealed partial class MainViewModel
 
                 Status = "正在总结全部改动";
                 var result = await new CommitMessageGenerator(Git, Settings).GenerateAsync(Root, files, _lifetimeCancellation.Token);
+                SetSummaryCost(result.Cost);
                 var current = await Git.ReadChangesAsync(Root);
                 if (!current.Select(file => file.Path).ToHashSet(StringComparer.Ordinal).SetEquals(files.Select(file => file.Path)))
                     throw new InvalidOperationException("改动已变化，请重新提交。");

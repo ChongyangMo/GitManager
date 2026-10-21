@@ -37,9 +37,13 @@ internal static partial class Program
                     string stagedBefore = (await Runner.RunAsync(repository, ["diff", "--cached", "--raw", "-z"])).Output;
                     await vm.GenerateCommitMessageAsync();
                     Check(vm.Status == "已生成提交说明（千问）" && !string.IsNullOrWhiteSpace(vm.CommitMessage), "真实千问接口已返回提交说明：" + vm.Status);
+                    Check(vm.SummaryCostLabel.StartsWith("预估 ¥", StringComparison.Ordinal), "真实调用已显示费用：" + vm.SummaryCostLabel);
+                    await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+                    SaveScreenshot(window, Path.Combine(Directory.GetCurrentDirectory(), "artifacts", "qwen-summary-cost.png"));
                     string actual = vm.CommitMessage;
                     await vm.GenerateCommitMessageAsync();
                     Check(vm.Status == "已生成提交说明（本地缓存）" && vm.CommitMessage == actual, "第二次总结直接复用本地结果");
+                    Check(vm.SummaryCostLabel == "本次 ¥0", "本地缓存的本次费用为零");
                     Check((await Runner.RunAsync(repository, ["rev-parse", "HEAD"])).Output == headBefore
                         && (await Runner.RunAsync(repository, ["diff", "--cached", "--raw", "-z"])).Output == stagedBefore,
                         "真实总结没有修改仓库提交或暂存区");

@@ -33,7 +33,8 @@ public sealed class QwenSettingsWindow : FormWindow
     {
         Enabled = OptionValue, BaseUrl = Fields[0].Value.Trim().TrimEnd('/'), Model = Fields[1].Value.Trim(),
         MaxInputCharacters = _previous.MaxInputCharacters, MaxFileCharacters = _previous.MaxFileCharacters,
-        MaxOutputTokens = _previous.MaxOutputTokens, TimeoutSeconds = _previous.TimeoutSeconds
+        MaxOutputTokens = _previous.MaxOutputTokens, TimeoutSeconds = _previous.TimeoutSeconds,
+        PublicGitHosts = [.. _previous.PublicGitHosts], Pricing = _previous.Pricing
     };
 
     private static bool HasStoredKey(QwenOptions options)

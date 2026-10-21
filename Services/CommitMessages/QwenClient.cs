@@ -6,7 +6,7 @@ using System.Text.Json;
 
 namespace GitManager.Services.CommitMessages;
 
-public sealed record QwenReply(string Message, int? InputTokens, int? CachedTokens, int? OutputTokens, long Milliseconds);
+public sealed record QwenReply(string Message, int? InputTokens, int? CachedTokens, int? OutputTokens, long Milliseconds, QwenCostEstimate Cost);
 
 public static class QwenClient
 {
@@ -22,6 +22,7 @@ public static class QwenClient
             max_tokens = options.MaxOutputTokens, temperature = 0.2, stream = false,
             messages = new[] { new { role = "system", content = QwenPrompt.System }, new { role = "user", content } } });
         var timer = Stopwatch.StartNew();
+        bool usageReported = false;
         try
         {
             using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
@@ -36,27 +37,24 @@ public static class QwenClient
             await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token);
             using var document = await JsonDocument.ParseAsync(stream, cancellationToken: timeout.Token);
             var body = document.RootElement;
+            var usage = QwenUsageReporter.ReadAndLog(options, body, timer.ElapsedMilliseconds);
+            usageReported = true;
             if (!body.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
-                throw new InvalidOperationException("千问没有返回提交说明，请重试。");
+                throw new InvalidOperationException("千问没有返回提交说明，请重试。" + usage.Cost.Label);
             var choice = choices[0];
             if (!choice.TryGetProperty("finish_reason", out var finish) || finish.GetString() != "stop")
-                throw new InvalidOperationException("千问回复未完整结束，请重试或调整输出长度。");
+                throw new InvalidOperationException("千问回复未完整结束，请重试或调整输出长度。" + usage.Cost.Label);
             string message = choice.GetProperty("message").GetProperty("content").GetString()?.Trim() ?? "";
             if (message.Length == 0 || message.Contains('\0')) throw new InvalidOperationException("千问返回的提交说明为空或无效。");
-            int? input = null, cached = null, output = null;
-            if (body.TryGetProperty("usage", out var usage))
-            {
-                input = Number(usage, "prompt_tokens"); output = Number(usage, "completion_tokens");
-                if (usage.TryGetProperty("prompt_tokens_details", out var details)) cached = Number(details, "cached_tokens");
-            }
-            return new(message, input, cached, output, timer.ElapsedMilliseconds);
+            return new(message, usage.InputTokens, usage.CachedTokens, usage.OutputTokens, timer.ElapsedMilliseconds, usage.Cost);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         { throw new TimeoutException("千问总结等待超时，请重试。"); }
         catch (HttpRequestException) { throw new InvalidOperationException("无法连接千问，请检查网络和接口地址。"); }
         catch (JsonException) { throw new InvalidOperationException("千问返回了无法识别的响应，请检查接口地址。"); }
+        finally
+        {
+            if (!usageReported) AppLog.Write("千问请求未取得完整用量，费用待确认，实际以账单为准");
+        }
     }
-
-    private static int? Number(JsonElement value, string property) => value.TryGetProperty(property, out var number)
-        && number.TryGetInt32(out int result) ? result : null;
 }
