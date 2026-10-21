@@ -8,6 +8,19 @@
         <TextBlock x:Name="StateText" Text="正在比较仓库" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,12" TextWrapping="Wrap"/>
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel>
+                <Border x:Name="AnalysisPanel" Style="{StaticResource Card}" Margin="0,0,12,16">
+                    <StackPanel>
+                        <DockPanel LastChildFill="True">
+                            <Button x:Name="AnalyzeButton" Content="重新分析" DockPanel.Dock="Right" Click="AnalyzeClicked"
+                                    Style="{StaticResource WorkspaceButton}" Margin="12,0,0,0"/>
+                            <TextBlock x:Name="AnalysisState" Text="准备分析" Foreground="{DynamicResource MutedBrush}"
+                                       VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        </DockPanel>
+                        <FlowDocumentScrollViewer x:Name="AnalysisDocument" Visibility="Collapsed" Margin="0,12,0,0"
+                                                  MaxHeight="300" MinHeight="100" IsToolBarVisible="False"
+                                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"/>
+                    </StackPanel>
+                </Border>
                 <ItemsControl x:Name="CopiesList" IsEnabled="False">
                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>

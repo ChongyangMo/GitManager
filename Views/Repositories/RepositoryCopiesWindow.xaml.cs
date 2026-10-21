@@ -24,16 +24,25 @@ public partial class RepositoryCopiesWindow : Window
         ThemeService.Attach(this);
         Title = bookmarks.FirstOrDefault()?.Name + " · 同名仓库";
         Loaded += async (_, _) => await ReloadAsync();
+        Closed += (_, _) =>
+        {
+            _closed = true;
+            _windowCancellation.Cancel();
+            _analysisCancellation?.Cancel();
+        };
     }
 
     private async Task ReloadAsync()
     {
         _loading = true;
+        ClearAnalysis();
+        AnalyzeButton.IsEnabled = false;
         CopiesList.IsEnabled = false;
         StateText.Text = "正在比较仓库";
         try
         {
-            Comparison = await new RepositoryCopyReader(_owner.Git).ReadAsync(_bookmarks);
+            Comparison = await new RepositoryCopyReader(_owner.Git).ReadAsync(_bookmarks, _windowCancellation.Token);
+            if (_closed) return;
             CopiesList.ItemsSource = Comparison.Copies;
             DifferencesList.ItemsSource = Comparison.Differences;
             LineEndingList.ItemsSource = Comparison.LineEndingDifferences;
@@ -43,12 +52,15 @@ public partial class RepositoryCopiesWindow : Window
             FileState.Text = Comparison.FileStatus;
             StateText.Text = "";
         }
+        catch (OperationCanceledException) when (_closed) { return; }
         catch (Exception ex)
         {
+            Comparison = null;
             StateText.Text = "比较失败：" + AppLog.Clean(ex.Message);
             AppLog.Write("比较同名仓库失败", ex);
         }
-        finally { _loading = false; CopiesList.IsEnabled = true; }
+        finally { _loading = false; CopiesList.IsEnabled = true; AnalyzeButton.IsEnabled = true; }
+        if (!_closed && Comparison is not null) await AnalyzeAsync();
     }
 
     private void LineEndingToggleClicked(object sender, RoutedEventArgs e)
@@ -78,6 +90,8 @@ public partial class RepositoryCopiesWindow : Window
             : $"仅移除这条仓库记录？\n\n{copy.Path}\n\n本地文件保留。";
         if (MessageBox.Show(this, message, deleteLocal ? "删除本地仓库" : "移除仓库记录",
                 MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+        ClearAnalysis();
+        AnalyzeButton.IsEnabled = false;
         _loading = true;
         CopiesList.IsEnabled = false;
         try
@@ -85,7 +99,7 @@ public partial class RepositoryCopiesWindow : Window
             if (await _owner.RemoveRepositoryCopyAsync(copy.Bookmark, deleteLocal, ConfirmRelease)) _bookmarks.Remove(copy.Bookmark);
             if (_bookmarks.Count == 0) { Close(); return; }
         }
-        finally { _loading = false; CopiesList.IsEnabled = true; }
+        finally { _loading = false; CopiesList.IsEnabled = true; AnalyzeButton.IsEnabled = true; }
         await ReloadAsync();
     }
 

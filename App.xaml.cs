@@ -21,6 +21,21 @@ public partial class App : Application
         {
             var settings = new SettingsStore();
             ThemeService.Apply(settings.Value.Theme);
+            if (e.Args is ["--luxai-connect"])
+            {
+                ShutdownMode = ShutdownMode.OnExplicitShutdown;
+                var login = new Views.CommitMessages.LuxAiLoginWindow(settings.Value.LuxAi);
+                MainWindow = login;
+                if (login.ShowDialog() == true)
+                {
+                    settings.Value.LuxAi.Enabled = true;
+                    settings.Value.Qwen.Enabled = true;
+                    settings.Save();
+                    AppLog.Write("已连接并启用集团 AI 总结");
+                }
+                Shutdown();
+                return;
+            }
             var viewModel = new MainViewModel(settings);
             var window = new MainWindow(viewModel);
             MainWindow = window;

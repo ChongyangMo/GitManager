@@ -1,0 +1,14 @@
+{
+  "Time": "2026-10-21T14:21:56.554687+08:00",
+  "Repository": "C:\\Users\\Administrator\\Desktop\\SDServiceCloud",
+  "Files": [
+    "backend/internal/nav/nav.go"
+  ],
+  "Source": "集团 AI",
+  "Message": "在设置页面菜单中新增“访问令牌”菜单项，位于“我的分享”与“分析”之间，排序值为35，对所有用户可见。",
+  "Fingerprint": "5BBF32C225AE8DA1117C0FD8563EAD0723F5898428F7C9E14FA4DF1048771CCB",
+  "Cost": "集团接口未返回模型型号、完整用量或费用，未作估算",
+  "Model": null,
+  "HeadUnchanged": true,
+  "IndexUnchanged": true
+}

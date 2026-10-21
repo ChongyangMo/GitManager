@@ -9,7 +9,8 @@ public sealed class QwenSettingsWindow : FormWindow
 {
     private readonly QwenOptions _previous;
 
-    public QwenSettingsWindow(QwenOptions options, ClaudeOptions? claude = null) : base("大模型总结",
+    public QwenSettingsWindow(QwenOptions options, ClaudeOptions? claude = null,
+        Func<Window, Task>? openLuxAi = null, Func<Services.LuxAi.LuxAiOptions>? luxAi = null) : base("大模型总结",
         new("千问接口地址", options.BaseUrl), new("千问模型", options.Model),
         new(HasStoredKey(options) ? "千问 API Key（已保存，留空保留）" : "千问 API Key", required: false, secret: true))
     {
@@ -18,18 +19,24 @@ public sealed class QwenSettingsWindow : FormWindow
         ShowNote("总结顺位", "正在检测本机 Claude…");
         Loaded += async (_, _) =>
         {
-            try { ShowNote("总结顺位", await SummaryProviderOrder.DescribeAsync(options, claude, default)); }
+            try { ShowNote("总结顺位", await SummaryProviderOrder.DescribeAsync(options, claude, default, luxAi?.Invoke())); }
             catch (Exception ex) { ShowNote("总结顺位", "检测失败：" + AppLog.Clean(ex.Message)); }
         };
         ShowOption("启用大模型总结", options.Enabled);
         ShowAction("用量统计", () => new QwenUsageWindow(options) { Owner = this }.ShowDialog());
+        if (openLuxAi is not null) ShowAction("集团 AI", async () =>
+        {
+            await openLuxAi(this);
+            try { ShowNote("总结顺位", await SummaryProviderOrder.DescribeAsync(options, claude, default, luxAi?.Invoke())); }
+            catch (Exception ex) { ShowNote("总结顺位", AppLog.Clean(ex.Message)); }
+        });
         Validate = () =>
         {
             try
             {
                 var value = Options;
                 _ = value.Endpoint();
-                if (value.Enabled && !SummaryProviderOrder.ClaudeInstalled(claude) && string.IsNullOrWhiteSpace(Fields[2].Value) && QwenCredentials.Read(value) is not { Length: > 0 })
+                if (value.Enabled && luxAi?.Invoke() is not { Enabled: true } && !SummaryProviderOrder.ClaudeInstalled(claude) && string.IsNullOrWhiteSpace(Fields[2].Value) && QwenCredentials.Read(value) is not { Length: > 0 })
                     return "本机没有 Claude，请填写此接口地址对应的千问 API Key。";
                 return null;
             }
@@ -55,7 +62,8 @@ public sealed class QwenSettingsWindow : FormWindow
     {
         try
         {
-            var dialog = new QwenSettingsWindow(viewModel.Settings.Value.Qwen, viewModel.Settings.Value.Claude) { Owner = owner };
+            var dialog = new QwenSettingsWindow(viewModel.Settings.Value.Qwen, viewModel.Settings.Value.Claude,
+                window => LuxAiSettingsWindow.OpenAsync(window, viewModel), () => viewModel.Settings.Value.LuxAi) { Owner = owner };
             if (dialog.ShowDialog() == true) await viewModel.SaveQwenSettingsAsync(dialog.Options, dialog.Fields[2].Value);
             dialog.Fields[2].Value = "";
         }

@@ -6,7 +6,7 @@ namespace GitManager.Services.CommitMessages;
 
 public static class InternalGitAddress
 {
-    public static async Task<string?> LocalOnlyReasonAsync(string address, string serviceCloudUrl, CancellationToken token, IReadOnlyCollection<string>? publicGitHosts = null)
+    public static async Task<string?> ExternalModelBlockReasonAsync(string address, string serviceCloudUrl, CancellationToken token, IReadOnlyCollection<string>? publicGitHosts = null)
     {
         string? host = Host(address);
         if (host is null) return "本地路径或无法识别的 Git 地址";

@@ -14,6 +14,7 @@ public sealed class AppSettings
     public ServiceCloud.ServiceCloudOptions ServiceCloud { get; set; } = null!;
     public CommitMessages.QwenOptions Qwen { get; set; } = new();
     public CommitMessages.ClaudeOptions Claude { get; set; } = new();
+    public LuxAi.LuxAiOptions LuxAi { get; set; } = new();
 }
 
 public sealed class SettingsStore
@@ -46,6 +47,7 @@ public sealed class SettingsStore
         Value.RepositoryDiscovery.Roots ??= [];
         Value.Qwen ??= new();
         Value.Claude ??= new();
+        Value.LuxAi ??= new();
         Value.Qwen.PublicGitHosts ??= [];
         if (Value.ServiceCloud is null)
         {

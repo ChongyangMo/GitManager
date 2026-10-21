@@ -7,14 +7,15 @@ namespace GitManager.Services.Repositories.Copies;
 
 public sealed class RepositoryCopyReader(GitRepositoryService git)
 {
-    public async Task<RepositoryCopyComparison> ReadAsync(IReadOnlyList<RepositoryBookmark> bookmarks)
+    public async Task<RepositoryCopyComparison> ReadAsync(IReadOnlyList<RepositoryBookmark> bookmarks, CancellationToken token = default)
     {
-        var copies = await Task.WhenAll(bookmarks.Select((bookmark, index) => ReadCopyAsync(bookmark, index + 1)));
+        var copies = await Task.WhenAll(bookmarks.Select((bookmark, index) => ReadCopyAsync(bookmark, index + 1, token)));
         List<RepositoryCopyDifference> differences = [], lineEndings = [];
         if (copies.All(copy => copy.Error.Length == 0))
         {
             foreach (string path in copies.SelectMany(copy => copy.Files.Keys).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal))
             {
+                token.ThrowIfCancellationRequested();
                 var values = copies.Select(copy => copy.Files.GetValueOrDefault(path)).ToArray();
                 if (values.Select(value => value?.Hash).Distinct(StringComparer.Ordinal).Count() == 1) continue;
                 // 同一提交在不同 core.autocrlf 下检出会得到 CRLF/LF 两种文件，内容一致，单独列出不计入差异。
@@ -31,20 +32,20 @@ public sealed class RepositoryCopyReader(GitRepositoryService git)
         return new(copies, differences, lineEndings);
     }
 
-    private async Task<RepositoryCopySnapshot> ReadCopyAsync(RepositoryBookmark bookmark, int number)
+    private async Task<RepositoryCopySnapshot> ReadCopyAsync(RepositoryBookmark bookmark, int number, CancellationToken token)
     {
         try
         {
-            string root = await git.OpenAsync(bookmark.Path);
+            string root = await git.OpenAsync(bookmark.Path, token);
             string remote = await git.ReadConfigAsync(root, "remote.origin.url");
             if (remote.Length == 0) remote = await git.ReadConfigAsync(root, "gitmanager.serviceCloudUrl");
-            var branch = await git.Runner.RunAsync(root, ["symbolic-ref", "--quiet", "--short", "HEAD"], true);
-            var commit = await git.Runner.RunAsync(root, ["log", "-1", "--format=%H%n%s"], true);
-            var head = await git.Runner.RunAsync(root, ["rev-parse", "--verify", "HEAD"], true);
+            var branch = await git.Runner.RunAsync(root, ["symbolic-ref", "--quiet", "--short", "HEAD"], true, token);
+            var commit = await git.Runner.RunAsync(root, ["log", "-1", "--format=%H%n%s"], true, token);
+            var head = await git.Runner.RunAsync(root, ["rev-parse", "--verify", "HEAD"], true, token);
             if (commit.ExitCode != 0 && head.ExitCode == 0) throw new IOException("读取最近提交失败。" + commit.Error);
-            var changes = await git.ReadChangesAsync(root);
-            string files = (await git.Runner.RunAsync(root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"])).Output;
-            var fingerprints = await Task.Run(() => ReadFiles(root, files));
+            var changes = await git.ReadChangesAsync(root, token);
+            string files = (await git.Runner.RunAsync(root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], cancellationToken: token)).Output;
+            var fingerprints = await Task.Run(() => ReadFiles(root, files, token), token);
             return new(bookmark, number, remote.Length == 0 ? "未配置" : AppLog.Clean(remote),
                 branch.ExitCode == 0 ? branch.Output.Trim() : "分离 HEAD",
                 commit.ExitCode == 0 ? commit.Output.Trim() : "暂无提交",
@@ -58,11 +59,12 @@ public sealed class RepositoryCopyReader(GitRepositoryService git)
         }
     }
 
-    private static Dictionary<string, RepositoryFileFingerprint> ReadFiles(string root, string output)
+    private static Dictionary<string, RepositoryFileFingerprint> ReadFiles(string root, string output, CancellationToken token)
     {
         var files = new Dictionary<string, RepositoryFileFingerprint>(StringComparer.Ordinal);
         foreach (string path in output.Split('\0', StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.Ordinal))
         {
+            token.ThrowIfCancellationRequested();
             string fullPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(root, path));
             if (!fullPath.StartsWith(root.TrimEnd('\\', '/') + System.IO.Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                 throw new IOException("仓库文件路径超出根目录。");

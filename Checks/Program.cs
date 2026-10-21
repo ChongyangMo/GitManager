@@ -21,8 +21,12 @@ internal static partial class Program
     {
         try
         {
+            if (args is ["--luxai-ui", var screenshot]) { RenderLuxAiSettings(screenshot); return 0; }
+            if (args is ["--luxai-session"]) { RunLuxAiSessionAsync().GetAwaiter().GetResult(); return 0; }
+            if (args.Length >= 3 && args[0] == "--luxai-live") { RunLuxAiLiveAsync(args[1], args[2..]).GetAwaiter().GetResult(); return 0; }
             if (args.Length == 1 && args[0] == "--repository-paths") { RunRepositoryPathChecksAsync().GetAwaiter().GetResult(); return 0; }
             if (args.Length == 1 && args[0] == "--repository-copies") { RunRepositoryCopiesChecks(); return 0; }
+            if (args.Length >= 3 && args[0] == "--copy-analysis-live") { RunCopyAnalysisLive(args[1..]); return 0; }
             if (args.Length == 1 && args[0] == "--line-endings") { RunLineEndingChecksAsync().GetAwaiter().GetResult(); return 0; }
             if (args.Length == 1 && args[0] == "--local-deletion") { RunLocalDeletionChecksAsync().GetAwaiter().GetResult(); return 0; }
             if (args.Length == 2 && args[0] == "--locks") { Console.WriteLine(GitManager.Services.Repositories.Copies.DirectoryLocks.Inspect(args[1]).Describe()); return 0; }
@@ -30,6 +34,7 @@ internal static partial class Program
             if (args.Length == 1 && args[0] == "--qwen-cost") { RunQwenCostChecks(); return 0; }
             if (args.Length == 1 && args[0] == "--claude") { RunClaudeChecksAsync().GetAwaiter().GetResult(); return 0; }
             if (args.Length > 0 && args[0] == "--model-policy") { RunModelPolicyChecksAsync(args[1..]).GetAwaiter().GetResult(); return 0; }
+            if (args is ["--model-routing-ui", var routingScreenshot]) { RenderModelRoutingSettings(routingScreenshot); return 0; }
             if (args.Length == 1 && args[0] == "--qwen") { RunQwenSummaryChecks(); return 0; }
             if (args.Length > 2 && args[0] == "--qwen-live") { RunCommitSummaryChecks(args[1], args[2..], qwenLive: true); return 0; }
             if (args.Length == 2 && args[0] == "--identity") { RunCommitIdentityChecksAsync(args[1]).GetAwaiter().GetResult(); return 0; }
@@ -38,6 +43,7 @@ internal static partial class Program
             if (args.Length > 2 && args[0] == "--summary") { RunCommitSummaryChecks(args[1], args[2..]); return 0; }
             if (args.Length > 2 && args[0] == "--summary-cancel") { RunCommitSummaryChecks(args[1], args[2..], cancelOnly: true); return 0; }
             if (args.Length > 2 && args[0] == "--auto-commit") { RunCommitSummaryChecks(args[1], args[2..], autoCommit: true); return 0; }
+            if (args.Length == 2 && args[0] == "--commit-details") { RunCommitDetailsChecks(args[1]); return 0; }
             if (args.Length == 2 && args[0] == "--history") { RunHistoryNavigationChecks(args[1]); return 0; }
             if (args.Length > 1 && args[0] == "--switching") { RunSwitchingChecks(args[1..]); return 0; }
             if (args.Length == 1 && args[0] == "--discovery") { RunDiscoveryChecksAsync().GetAwaiter().GetResult(); return 0; }

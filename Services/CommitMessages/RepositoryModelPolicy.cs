@@ -2,7 +2,7 @@ namespace GitManager.Services.CommitMessages;
 
 public sealed class RepositoryModelPolicy(GitRepositoryService git, SettingsStore settings)
 {
-    public async Task<string?> LocalOnlyReasonAsync(string root, CancellationToken token)
+    public async Task<string?> ExternalModelBlockReasonAsync(string root, CancellationToken token)
     {
         try
         {
@@ -20,7 +20,7 @@ public sealed class RepositoryModelPolicy(GitRepositoryService git, SettingsStor
                     if (urls.Length == 0) return "远程地址为空";
                     foreach (string url in urls)
                     {
-                        string? reason = await InternalGitAddress.LocalOnlyReasonAsync(url, settings.Value.ServiceCloud.BaseUrl, token, settings.Value.Qwen.PublicGitHosts);
+                        string? reason = await InternalGitAddress.ExternalModelBlockReasonAsync(url, settings.Value.ServiceCloud.BaseUrl, token, settings.Value.Qwen.PublicGitHosts);
                         if (reason is not null) return reason;
                     }
                 }

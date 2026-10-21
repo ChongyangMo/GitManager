@@ -11,7 +11,7 @@ public sealed record QwenReply(string Message, int? InputTokens, int? CachedToke
 
 public static class QwenClient
 {
-    public static async Task<QwenReply> GenerateAsync(QwenOptions options, string apiKey, string content, CancellationToken cancellationToken)
+    public static async Task<QwenReply> GenerateAsync(QwenOptions options, string apiKey, string content, CancellationToken cancellationToken, string? systemPrompt = null)
     {
         using var handler = new HttpClientHandler { AllowAutoRedirect = false, UseProxy = false };
         using var http = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
@@ -21,7 +21,7 @@ public static class QwenClient
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         request.Content = JsonContent.Create(new { model = options.Model.Trim(), enable_thinking = false,
             max_tokens = options.MaxOutputTokens, temperature = 0.2, stream = false,
-            messages = new[] { new { role = "system", content = QwenPrompt.System }, new { role = "user", content } } });
+            messages = new[] { new { role = "system", content = systemPrompt ?? QwenPrompt.System }, new { role = "user", content } } });
         var timer = Stopwatch.StartNew();
         string requestId = Guid.NewGuid().ToString("N"), result = "失败";
         var startedAt = DateTimeOffset.Now;

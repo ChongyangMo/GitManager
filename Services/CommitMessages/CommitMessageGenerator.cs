@@ -5,16 +5,18 @@ namespace GitManager.Services.CommitMessages;
 
 public sealed record GeneratedCommitMessage(string Message, string Source, string Fingerprint, QwenCostEstimate Cost);
 
-public sealed class CommitMessageGenerator(GitRepositoryService git, SettingsStore settings)
+public sealed partial class CommitMessageGenerator(GitRepositoryService git, SettingsStore settings)
 {
     public async Task<GeneratedCommitMessage> GenerateAsync(string root, IReadOnlyList<ChangedFile> selected, CancellationToken token)
     {
         var options = settings.Value.Qwen;
-        var policy = new RepositoryModelPolicy(git, settings);
-        string? localReason = options.Enabled ? await policy.LocalOnlyReasonAsync(root, token) : null;
-        if (!options.Enabled || localReason is not null)
+        var routing = new RepositorySummaryRouting(git, settings);
+        var route = await routing.ResolveAsync([root], token);
+        if (route.Target == SummaryModelTarget.GroupAi)
+            return await GenerateLuxAiAsync(root, selected, token);
+        if (route.Target == SummaryModelTarget.LocalRules)
         {
-            if (localReason is not null) AppLog.Write("此仓库使用本地规则总结，已禁用大模型：" + localReason);
+            AppLog.Write("此仓库使用本地规则总结：" + route.Reason);
             return await GenerateLocalAsync(root, selected, token);
         }
         var reader = new CommitContentReader(git);
@@ -31,15 +33,12 @@ public sealed class CommitMessageGenerator(GitRepositoryService git, SettingsSto
         QwenCostEstimate cost = QwenCostEstimate.Local;
         if (!cached)
         {
-            if (await policy.LocalOnlyReasonAsync(root, token) is { } changedReason)
-            {
-                AppLog.Write("仓库远程配置已变化，使用本地规则总结：" + changedReason);
-                return await GenerateLocalAsync(root, selected, token);
-            }
-            if (await TryClaudeAsync(claude, content.Text, token) is { } reply)
+            await routing.EnsureAsync([root], SummaryModelTarget.PublicModels, token);
+            if (await TryClaudeAsync(root, claude, content.Text, token) is { } reply)
                 (message, cost, source) = (reply.Message, reply.Cost, "Claude");
             else
             {
+                await routing.EnsureAsync([root], SummaryModelTarget.PublicModels, token);
                 _ = options.Endpoint();
                 string key = QwenCredentials.Read(options) ?? throw new InvalidOperationException("本机 Claude 不可用，请先在“设置 → 大模型总结”中填写 API Key。");
                 var qwen = await QwenClient.GenerateAsync(options, key, content.Text, token);
@@ -48,6 +47,7 @@ public sealed class CommitMessageGenerator(GitRepositoryService git, SettingsSto
         }
         var current = await reader.ReadAsync(root, selected, options, token);
         if (content.Fingerprint != current.Fingerprint) throw new InvalidOperationException("总结期间文件内容已变化，请重新总结或提交。");
+        await routing.EnsureAsync([root], SummaryModelTarget.PublicModels, token);
         token.ThrowIfCancellationRequested();
         if (!cached) cache.Save(cacheKey, message!);
         else AppLog.Write("已复用本地总结缓存，无需再次调用接口，本次 ¥0");
@@ -55,12 +55,16 @@ public sealed class CommitMessageGenerator(GitRepositoryService git, SettingsSto
     }
 
     // 本机没有 Claude、未登录或调用失败时返回 null，由千问接手。
-    private static async Task<ClaudeReply?> TryClaudeAsync(ClaudeOptions options, string content, CancellationToken token)
+    private async Task<ClaudeReply?> TryClaudeAsync(string root, ClaudeOptions options, string content, CancellationToken token)
     {
         if (!options.Enabled) return null;
         if (ClaudeClient.FindExecutable() is not { } executable) { AppLog.Write("本机未安装 Claude Code，使用千问总结"); return null; }
         if (!await ClaudeClient.IsLoggedInAsync(executable, token)) { AppLog.Write("本机 Claude Code 未登录，使用千问总结"); return null; }
-        try { return await ClaudeClient.GenerateAsync(options, executable, content, token); }
+        try
+        {
+            await new RepositorySummaryRouting(git, settings).EnsureAsync([root], SummaryModelTarget.PublicModels, token);
+            return await ClaudeClient.GenerateAsync(options, executable, content, token);
+        }
         catch (Exception ex) when ((ex is InvalidOperationException or TimeoutException or System.ComponentModel.Win32Exception) && !token.IsCancellationRequested)
         {
             AppLog.Write("Claude 总结失败，改用千问：" + AppLog.Clean(ex.Message));

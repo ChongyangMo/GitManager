@@ -35,13 +35,13 @@ public static class ClaudeClient
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or TimeoutException or System.ComponentModel.Win32Exception) { return false; }
     }
 
-    public static async Task<ClaudeReply> GenerateAsync(ClaudeOptions options, string executable, string content, CancellationToken cancellationToken, QwenUsageStore? usageStore = null)
+    public static async Task<ClaudeReply> GenerateAsync(ClaudeOptions options, string executable, string content, CancellationToken cancellationToken, QwenUsageStore? usageStore = null, string? systemPrompt = null)
     {
         if (string.IsNullOrWhiteSpace(options.Model) || options.Model.Any(char.IsControl) || options.TimeoutSeconds is < 10 or > 600)
             throw new InvalidOperationException("Claude 配置中的模型或超时设置无效。");
         // 不开放任何工具、不加载项目配置和 MCP，只做一次纯文本总结。
         string[] arguments = ["-p", "--model", options.Model.Trim(), "--output-format", "json", "--tools", "",
-            "--system-prompt", QwenPrompt.System, "--no-session-persistence", "--strict-mcp-config", "--setting-sources", "", "--disable-slash-commands"];
+            "--system-prompt", systemPrompt ?? QwenPrompt.System, "--no-session-persistence", "--strict-mcp-config", "--setting-sources", "", "--disable-slash-commands"];
         string id = Guid.NewGuid().ToString("N");
         var startedAt = DateTimeOffset.Now;
         var timer = Stopwatch.StartNew();

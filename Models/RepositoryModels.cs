@@ -46,8 +46,9 @@ public sealed class ChangedFile(string path, string? originalPath, char indexSta
     public IEnumerable<string> Paths => OriginalPath is null ? [Path] : [OriginalPath, Path];
 }
 
-public sealed record CommitInfo(string Hash, string ShortHash, string Author, string Date, string Subject, string Parents)
+public sealed record CommitInfo(string Hash, string ShortHash, string Author, string Date, string Subject, string Parents, string Message = "")
 {
+    public string FullMessage => string.IsNullOrEmpty(Message) ? Subject : Message.TrimEnd('\r', '\n');
     public string DisplayDate => DateTimeOffset.TryParse(Date, out var time) ? time.ToLocalTime().ToString("MM-dd HH:mm") : Date;
     public string FirstParent => Parents.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
 }

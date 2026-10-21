@@ -7,11 +7,11 @@ public sealed partial class GitRepositoryService
 {
     public async Task<List<CommitInfo>> ReadCommitsAsync(string root, string revision, int count = 300)
     {
-        string text = (await Run(root, "log", "-n", count.ToString(), "--date-order", "--format=%H%x00%h%x00%an%x00%aI%x00%s%x00%P%x00", "--end-of-options", revision, "--")).Output;
+        string text = (await Run(root, "log", "-n", count.ToString(), "--date-order", "--format=%H%x00%h%x00%an%x00%aI%x00%s%x00%P%x00%B%x00", "--end-of-options", revision, "--")).Output;
         string[] fields = text.Split('\0');
         List<CommitInfo> commits = [];
-        for (int i = 0; i + 5 < fields.Length; i += 6)
-            commits.Add(new(fields[i].TrimStart('\r', '\n'), fields[i + 1], fields[i + 2], fields[i + 3], fields[i + 4], fields[i + 5]));
+        for (int i = 0; i + 6 < fields.Length; i += 7)
+            commits.Add(new(fields[i].TrimStart('\r', '\n'), fields[i + 1], fields[i + 2], fields[i + 3], fields[i + 4], fields[i + 5], fields[i + 6]));
         return commits;
     }
 

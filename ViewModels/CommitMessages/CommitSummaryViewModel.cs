@@ -1,6 +1,7 @@
 using System.Windows;
 using GitManager.Services;
 using GitManager.Services.CommitMessages;
+using GitManager.Services.LuxAi;
 
 namespace GitManager.ViewModels;
 
@@ -68,6 +69,17 @@ public sealed partial class MainViewModel
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
             if (!_disposed && generation == _commitSummaryGeneration && Repository?.Path == root) Status = "已取消生成";
+        }
+        catch (LuxAiLoginRequiredException ex)
+        {
+            if (_disposed || generation != _commitSummaryGeneration || Repository?.Path != root) return;
+            Status = ex.Message;
+            try
+            {
+                var login = new Views.CommitMessages.LuxAiLoginWindow(Settings.Value.LuxAi) { Owner = Application.Current.MainWindow };
+                if (login.ShowDialog() == true) Status = "集团 AI 已登录，请再次点击自动总结";
+            }
+            catch (Exception loginError) { Status = AppLog.Clean(loginError.Message); AppLog.Write("集团 AI 重新登录失败", loginError); }
         }
         catch (Exception ex)
         {
