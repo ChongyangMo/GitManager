@@ -42,6 +42,7 @@ public sealed partial class MainViewModel
         if (HasRepository) await RefreshCoreAsync();
         else if (Repositories.FirstOrDefault() is { } first) await OpenCoreAsync(first.Path);
         _ = RefreshRepositoryPushIndicatorsAsync();
+        if (HasRepository) ReloadGitHubVisibility();
     });
 
     private async Task RefreshCoreAsync()

@@ -18,4 +18,16 @@ internal static partial class Program
         Check((await Runner.RunAsync(root, ["remote", "get-url", remote])).Output.Trim() == url, "保留原远程仓库地址");
         Console.WriteLine("GitHub 真实远程检查完成：" + url);
     }
+
+    // 只读检查：读取真实仓库的可见性和修改权限，不改动 GitHub 上的设置。
+    private static async Task RunGitHubVisibilityChecksAsync(string root, string remote)
+    {
+        var git = new GitRepositoryService(Runner, new SettingsStore().Value.GitHub);
+        string url = (await Runner.RunAsync(root, ["remote", "get-url", remote])).Output.Trim();
+        var address = Services.GitHub.GitHubRepositoryAddress.Parse(url);
+        Check(address is not null, "使用真实 GitHub 仓库地址验证");
+        var visibility = await git.ReadGitHubVisibilityAsync(root, address!);
+        Check(visibility.Visibility is "public" or "private" or "internal", "读取到 GitHub 可见性");
+        Console.WriteLine($"GitHub 可见性：{address!.FullName} {visibility.Label}，可修改：{visibility.CanChange}");
+    }
 }

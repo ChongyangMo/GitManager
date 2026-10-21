@@ -19,12 +19,19 @@ public sealed partial class GitRepositoryService
         if (head.ExitCode != 0 || branch.ExitCode != 0)
             throw new InvalidOperationException("请先在本地分支提交代码，再自动创建并推送远程仓库。");
 
+        using var client = await CreateGitHubClientAsync(root, address, "自动创建 GitHub 仓库需要登录授权，请先通过 Git 凭据管理器登录具有创建仓库权限的账号。", token);
+        await client.EnsureExistsAsync(address, GitHubOptions.Private, token);
+        return true;
+    }
+
+    private async Task<GitHub.GitHubRepositoryClient> CreateGitHubClientAsync(string root, GitHub.GitHubRepositoryAddress address, string missingCredential, CancellationToken token)
+    {
         // 复用 Git 凭据管理器，令牌只在内存中使用，不写入配置或日志。
         var credential = await Runner.RunAsync(root, ["-c", "credential.interactive=false", "credential", "fill"], true, token,
             standardInput: "url=" + address.HttpsUrl + "\n\n");
         string? secret = credential.Output.Split('\n').FirstOrDefault(line => line.StartsWith("password=", StringComparison.Ordinal))?[9..].TrimEnd('\r');
         if (credential.ExitCode != 0 || string.IsNullOrEmpty(secret))
-            throw new InvalidOperationException("自动创建 GitHub 仓库需要登录授权，请先通过 Git 凭据管理器登录具有创建仓库权限的账号。");
+            throw new InvalidOperationException(missingCredential);
         string proxy = GitHubOptions.ProxyUrl;
         if (string.IsNullOrWhiteSpace(proxy))
         {
@@ -33,8 +40,6 @@ public sealed partial class GitRepositoryService
             if (configured.ExitCode is not (0 or 1)) throw new InvalidOperationException("读取 Git 代理配置失败，请检查仓库设置。");
             proxy = configured.Output.Trim();
         }
-        using var client = new GitHub.GitHubRepositoryClient(secret, proxy);
-        await client.EnsureExistsAsync(address, GitHubOptions.Private, token);
-        return true;
+        return new GitHub.GitHubRepositoryClient(secret, proxy);
     }
 }

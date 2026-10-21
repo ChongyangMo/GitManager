@@ -22,6 +22,7 @@ internal static partial class Program
         try
         {
             if (args is ["--ensure-github-remote", var githubRoot, var githubRemote]) { RunGitHubRemoteChecksAsync(githubRoot, githubRemote).GetAwaiter().GetResult(); return 0; }
+            if (args is ["--github-visibility", var visibilityRoot, var visibilityRemote]) { RunGitHubVisibilityChecksAsync(visibilityRoot, visibilityRemote).GetAwaiter().GetResult(); return 0; }
             if (args.Length > 2 && args[0] == "--codex-live") { RunCodexLiveAsync(args[1], args[2..]).GetAwaiter().GetResult(); return 0; }
             if (args.Length >= 3 && args[0] == "--push-indicators") { RunPushIndicatorChecks(args[1], args[2..]); return 0; }
             if (args is ["--layout", var layoutRepository, var layoutScreenshot]) { RunLayoutChecks(layoutRepository, layoutScreenshot); return 0; }

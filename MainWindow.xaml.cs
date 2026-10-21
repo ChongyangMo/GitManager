@@ -133,6 +133,16 @@ public partial class MainWindow : Window
         var dialog = new FormWindow("远程仓库", new FormField((ViewModel.SelectedRemoteBranch?.RemoteName ?? "origin") + " 地址", ViewModel.ActiveRemoteUrl)) { Owner = this };
         if (dialog.ShowDialog() == true) await ViewModel.SaveRemoteAsync(dialog.Fields[0].Value);
     }
+    private async void GitHubVisibilityClicked(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.GitHubVisibility is not { } current) { ViewModel.ReloadGitHubVisibility(); return; }
+        string name = ViewModel.GitHubRepositoryName;
+        string message = current.IsPrivate
+            ? $"将 {name} 改为公开后，任何人都能查看全部代码和提交历史。\n确认改为公开？"
+            : $"将 {name} 改为私有后，只有你和协作者可以访问，非协作者的星标和关注会被移除。\n确认改为私有？";
+        if (MessageBox.Show(this, message, "修改 GitHub 可见性", MessageBoxButton.OKCancel, MessageBoxImage.Warning) == MessageBoxResult.OK)
+            await ViewModel.ChangeGitHubVisibilityAsync();
+    }
     private async void RestoreVersionClicked(object sender, RoutedEventArgs e) => await RestoreAsync(fileOnly: false);
     private async void RestoreFileClicked(object sender, RoutedEventArgs e) => await RestoreAsync(fileOnly: true);
     private async Task RestoreAsync(bool fileOnly)

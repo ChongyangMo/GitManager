@@ -66,6 +66,7 @@ public sealed partial class MainViewModel
         if (_versions is not null && _versionRoot is { } versionRoot && Repository?.Path == versionRoot)
             UpdateRepositoryPushIndicator(versionRoot, _versions.HasRemote ? _versions.Ahead : null);
         Notify(nameof(ActiveRemoteUrl)); Notify(nameof(RemoteAddresses)); Notify(nameof(HasRemoteAddresses));
+        UpdateGitHubVisibility();
         foreach (string name in new[] { nameof(RemoteSource), nameof(RemoteTitle), nameof(LocalVersionLabel), nameof(LocalVersionDetail), nameof(RemoteVersionHash), nameof(RemoteVersionDetail), nameof(IsMerging), nameof(CanResolveSelected), nameof(CanMergeRemote), nameof(CommitButtonLabel), nameof(FetchStateText), nameof(FetchError), nameof(SyncStateText) }) Notify(name);
     }
 
