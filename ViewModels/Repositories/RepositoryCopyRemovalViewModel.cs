@@ -9,6 +9,7 @@ public sealed partial class MainViewModel
     public async Task<bool> RemoveRepositoryCopyAsync(RepositoryBookmark bookmark, bool deleteLocal)
     {
         bool removed = false;
+        string? result = null;
         await ExecuteAsync(deleteLocal ? "正在删除本地仓库" : "正在移除仓库记录", async () =>
         {
             if (!Repositories.Contains(bookmark)) return;
@@ -31,7 +32,7 @@ public sealed partial class MainViewModel
             }
             try
             {
-                if (deleteLocal) await new RepositoryLocalDeletion(Git).RecycleAsync(bookmark, remaining.Select(item => item.Path).ToArray());
+                if (deleteLocal) result = await new RepositoryLocalDeletion(Git).RecycleAsync(bookmark, remaining.Select(item => item.Path).ToArray());
             }
             catch
             {
@@ -54,6 +55,7 @@ public sealed partial class MainViewModel
             removed = true;
             AppLog.Write((deleteLocal ? "已删除本地仓库并移除记录：" : "已移除仓库记录：") + bookmark.Path);
             if (!HasRepository && remaining.FirstOrDefault() is { } next) await OpenCoreAsync(next.Path);
+            if (result is not null) Status = result;
         });
         return removed;
     }

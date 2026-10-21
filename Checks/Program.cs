@@ -24,6 +24,7 @@ internal static partial class Program
             if (args.Length == 1 && args[0] == "--repository-paths") { RunRepositoryPathChecksAsync().GetAwaiter().GetResult(); return 0; }
             if (args.Length == 1 && args[0] == "--repository-copies") { RunRepositoryCopiesChecks(); return 0; }
             if (args.Length == 1 && args[0] == "--line-endings") { RunLineEndingChecksAsync().GetAwaiter().GetResult(); return 0; }
+            if (args.Length == 1 && args[0] == "--local-deletion") { RunLocalDeletionChecksAsync().GetAwaiter().GetResult(); return 0; }
             if (args.Length == 1 && args[0] == "--qwen-usage") { RunQwenUsageChecks(); return 0; }
             if (args.Length == 1 && args[0] == "--qwen-cost") { RunQwenCostChecks(); return 0; }
             if (args.Length == 1 && args[0] == "--claude") { RunClaudeChecksAsync().GetAwaiter().GetResult(); return 0; }

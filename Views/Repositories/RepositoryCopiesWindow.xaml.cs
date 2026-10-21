@@ -74,7 +74,7 @@ public partial class RepositoryCopiesWindow : Window
     {
         if (_loading || _owner.IsBusy || sender is not FrameworkElement { DataContext: RepositoryCopySnapshot copy }) return;
         string message = deleteLocal
-            ? $"将整个目录（含 .git、未提交文件和忽略文件）移到回收站，并移除记录？\n\n{copy.Path}\n\n{copy.Changes}"
+            ? $"将整个目录（含 .git、未提交文件和忽略文件）移到回收站，并移除记录？链接工作树会同时清理工作树登记和已合并的分支。\n\n{copy.Path}\n\n{copy.Changes}"
             : $"仅移除这条仓库记录？\n\n{copy.Path}\n\n本地文件保留。";
         if (MessageBox.Show(this, message, deleteLocal ? "删除本地仓库" : "移除仓库记录",
                 MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
