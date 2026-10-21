@@ -26,7 +26,7 @@ public partial class FormWindow : Window
     {
         Fields = fields;
         InitializeComponent();
-        GitManager.Services.ThemeService.Attach(this);
+        GitManager.Services.ThemeService.Attach(this, "CardBrush"); // 窗口底色是卡片色
         Title = title;
         DataContext = this;
         Loaded += (_, _) => MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.First));

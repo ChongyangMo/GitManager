@@ -22,7 +22,7 @@ public partial class MainWindow : Window
         DataContext = viewModel;
         GroupRepositoriesByRemote();
         FitToWorkArea();
-        ThemeService.Attach(this);
+        ThemeService.Attach(this, "CardBrush"); // 最上面是侧栏顶部和工具栏（卡片色）
         Closed += (_, _) => viewModel.Dispose();
     }
     // 导航栏按远程 Git 服务分组，组内保持原有顺序；读取到分组后实时移入对应分组，并保持当前选中的仓库。
