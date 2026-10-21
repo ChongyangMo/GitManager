@@ -82,10 +82,16 @@ public partial class RepositoryCopiesWindow : Window
         CopiesList.IsEnabled = false;
         try
         {
-            if (await _owner.RemoveRepositoryCopyAsync(copy.Bookmark, deleteLocal)) _bookmarks.Remove(copy.Bookmark);
+            if (await _owner.RemoveRepositoryCopyAsync(copy.Bookmark, deleteLocal, ConfirmRelease)) _bookmarks.Remove(copy.Bookmark);
             if (_bookmarks.Count == 0) { Close(); return; }
         }
         finally { _loading = false; CopiesList.IsEnabled = true; }
         await ReloadAsync();
     }
+
+    // 编译服务、资源管理器窗口等安全占用已自动解除；这里只询问需要结束的其他程序。
+    private bool ConfirmRelease(IReadOnlyList<DirectoryLockHolder> holders) => Dispatcher.Invoke(() => MessageBox.Show(this,
+        "以下程序正在占用该目录：\n\n" + string.Join("\n", holders.Select(holder => "· " + holder))
+        + "\n\n结束这些程序后继续删除？会先请求正常关闭，未响应再强制结束，未保存的内容可能丢失。",
+        "目录被占用", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes);
 }

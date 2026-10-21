@@ -38,6 +38,33 @@ internal static partial class Program
         Directory.Delete(stale, recursive: true);
         string third = await deletion.RecycleAsync(new RepositoryBookmark(main), []);
         Check(!Directory.Exists(main) && third == "已将本地目录移到回收站", "手动删掉的工作树留下的失效登记不再阻止删除主仓库");
+
+        // 真实进程占用：一个终端把当前目录放在仓库里，另一个进程独占打开其中的文件。
+        string locked = Path.Combine(root, "locked");
+        Directory.CreateDirectory(locked);
+        await Git.InitializeAsync(locked);
+        await File.WriteAllTextAsync(Path.Combine(locked, "占用.txt"), "内容\n");
+        using var terminal = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe", "/c ping -n 120 127.0.0.1 >nul")
+            { WorkingDirectory = locked, CreateNoWindow = true, UseShellExecute = false })!;
+        using var reader = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("powershell.exe",
+            $"-NoProfile -Command \"$f=[IO.File]::Open('{Path.Combine(locked, "占用.txt")}','Open','Read','None'); Start-Sleep 120\"")
+            { WorkingDirectory = root, CreateNoWindow = true, UseShellExecute = false })!;
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(20);
+        DirectoryLockReport report;
+        do { await Task.Delay(300); report = DirectoryLocks.Inspect(locked); }
+        while (!report.Holders.Any(holder => holder.ProcessId == reader.Id) && DateTimeOffset.UtcNow < deadline);
+        Check(report.Holders.Any(holder => holder.ProcessId == terminal.Id && holder.Reason.Contains("当前工作目录"))
+            && report.Holders.Any(holder => holder.ProcessId == reader.Id && holder.Reason.Contains("打开了其中的文件")), "调查出当前目录占用和文件占用的具体进程");
+
+        IReadOnlyList<DirectoryLockHolder>? asked = null;
+        string refused = "";
+        try { await deletion.RecycleAsync(new RepositoryBookmark(locked), [], holders => { asked = holders; return false; }); }
+        catch (IOException ex) { refused = ex.Message; }
+        Check(Directory.Exists(locked) && !terminal.HasExited && !reader.HasExited && asked?.Any(holder => holder.ProcessId == terminal.Id) == true
+            && refused.Contains($"PID {terminal.Id}") && refused.Contains($"PID {reader.Id}"), "未同意结束程序时不删除，并说明占用者");
+
+        await deletion.RecycleAsync(new RepositoryBookmark(locked), [], _ => true);
+        Check(!Directory.Exists(locked) && terminal.WaitForExit(5000) && reader.WaitForExit(5000), "同意后结束占用程序并完整删除目录");
         Console.WriteLine($"本地删除检查通过，共 {_count} 项。临时目录：{root}");
     }
 }

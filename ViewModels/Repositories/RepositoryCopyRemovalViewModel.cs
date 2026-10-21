@@ -6,7 +6,8 @@ namespace GitManager.ViewModels;
 
 public sealed partial class MainViewModel
 {
-    public async Task<bool> RemoveRepositoryCopyAsync(RepositoryBookmark bookmark, bool deleteLocal)
+    public async Task<bool> RemoveRepositoryCopyAsync(RepositoryBookmark bookmark, bool deleteLocal,
+        Func<IReadOnlyList<DirectoryLockHolder>, bool>? confirmRelease = null)
     {
         bool removed = false;
         string? result = null;
@@ -32,7 +33,7 @@ public sealed partial class MainViewModel
             }
             try
             {
-                if (deleteLocal) result = await new RepositoryLocalDeletion(Git).RecycleAsync(bookmark, remaining.Select(item => item.Path).ToArray());
+                if (deleteLocal) result = await new RepositoryLocalDeletion(Git).RecycleAsync(bookmark, remaining.Select(item => item.Path).ToArray(), confirmRelease);
             }
             catch
             {

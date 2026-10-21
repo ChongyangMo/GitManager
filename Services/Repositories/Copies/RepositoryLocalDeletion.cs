@@ -7,7 +7,9 @@ namespace GitManager.Services.Repositories.Copies;
 public sealed class RepositoryLocalDeletion(GitRepositoryService git)
 {
     // 返回给用户看的结果说明；链接工作树会同时清理 Git 中的工作树登记、已合并的分支和因此变空的上层目录。
-    public async Task<string> RecycleAsync(RepositoryBookmark bookmark, IEnumerable<string> otherRepositories)
+    // confirmRelease 用于询问是否结束占用目录的其他程序；为空时只自动解除安全的占用。
+    public async Task<string> RecycleAsync(RepositoryBookmark bookmark, IEnumerable<string> otherRepositories,
+        Func<IReadOnlyList<DirectoryLockHolder>, bool>? confirmRelease = null)
     {
         string root = await git.OpenAsync(bookmark.Path);
         var dirs = (await git.Runner.RunAsync(root, ["rev-parse", "--path-format=absolute", "--git-common-dir", "--absolute-git-dir"])).Output
@@ -30,12 +32,29 @@ public sealed class RepositoryLocalDeletion(GitRepositoryService git)
             if (worktrees.Output.Split('\0').Count(line => line.StartsWith("worktree ", StringComparison.Ordinal)) > 1)
                 throw new InvalidOperationException("此仓库还关联其他工作树，请先删除那些工作树后再删除本地文件。");
         }
-        await Task.Run(() =>
+        var locks = await Task.Run(() => DirectoryLocks.Inspect(root));
+        if (locks.Holders.Count > 0)
         {
-            ValidateTarget(root, otherRepositories, linked);
-            FileSystem.DeleteDirectory(root, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin, UICancelOption.ThrowException);
-        });
-        string? leftover = await RemoveLeftoverAsync(root);
+            AppLog.Write("删除前发现目录占用：" + root + "\n" + locks.Describe());
+            locks = await DirectoryLocks.ReleaseAsync(root, locks, confirmRelease);
+            if (locks.Holders.Count > 0) throw new IOException("目录仍被以下程序占用，未删除：\n" + locks.Describe());
+        }
+        try
+        {
+            await Task.Run(() =>
+            {
+                ValidateTarget(root, otherRepositories, linked);
+                FileSystem.DeleteDirectory(root, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin, UICancelOption.ThrowException);
+            });
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or IOException)
+        {
+            // 检查与删除之间可能有程序新打开了目录；失败时重新调查，告诉用户具体是谁。
+            var current = await Task.Run(() => DirectoryLocks.Inspect(root));
+            AppLog.Write("删除本地目录失败：" + root + "\n" + current.Describe(), ex);
+            throw new IOException("删除未完成，目录占用情况：\n" + current.Describe(), ex);
+        }
+        string? leftover = await RemoveLeftoverAsync(root, confirmRelease);
         AppLog.Write("本地仓库已移到回收站：" + root);
         var notes = new List<string> { linked ? "已将工作树目录移到回收站" : "已将本地目录移到回收站" };
         if (leftover is not null) notes.Add(leftover);
@@ -61,7 +80,7 @@ public sealed class RepositoryLocalDeletion(GitRepositoryService git)
     }
 
     // 回收站有时只移走内容而留下被短暂占用的空目录：空目录直接删除；仍被占用时返回说明，仍有文件时报错，不静默残留。
-    private static async Task<string?> RemoveLeftoverAsync(string root)
+    private static async Task<string?> RemoveLeftoverAsync(string root, Func<IReadOnlyList<DirectoryLockHolder>, bool>? confirmRelease)
     {
         for (int attempt = 0; Directory.Exists(root); attempt++)
         {
@@ -71,12 +90,18 @@ public sealed class RepositoryLocalDeletion(GitRepositoryService git)
                 try { Directory.Delete(root); continue; }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
             }
+            if (attempt == 5)
+            {
+                var locks = await Task.Run(() => DirectoryLocks.Inspect(root));
+                if (locks.Holders.Count > 0) await DirectoryLocks.ReleaseAsync(root, locks, confirmRelease);
+            }
             if (attempt >= 10)
             {
+                var locks = await Task.Run(() => DirectoryLocks.Inspect(root));
                 if (remaining.Length > 0)
-                    throw new IOException("部分文件正被其他程序使用，未能删除：\n" + string.Join("\n", remaining.Select(path => Path.GetRelativePath(root, path))));
-                AppLog.Write("空目录仍被占用：" + root);
-                return "空目录正被其他程序使用（例如打开在该目录的终端或编辑器），关闭后可直接删除";
+                    throw new IOException("部分文件未能删除：\n" + string.Join("\n", remaining.Select(path => Path.GetRelativePath(root, path))) + "\n占用情况：\n" + locks.Describe());
+                AppLog.Write("空目录仍被占用：" + root + "\n" + locks.Describe());
+                return "内容已移到回收站，但空目录仍被占用：" + locks.Describe();
             }
             await Task.Delay(200);
         }
