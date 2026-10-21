@@ -27,6 +27,19 @@
                                 <Setter TargetName="ConflictButton" Property="Visibility" Value="Visible"/>
                             </DataTrigger></DataTemplate.Triggers>
                         </DataTemplate></ListBox.ItemTemplate>
+                        <ListBox.GroupStyle><GroupStyle AlternationCount="1000"><GroupStyle.ContainerStyle><Style TargetType="GroupItem">
+                            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="GroupItem">
+                                <StackPanel>
+                                    <Border x:Name="GroupLine" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Margin="10,8,10,0" />
+                                    <TextBlock x:Name="GroupName" Text="{Binding Name}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="10,8,10,2" />
+                                    <ItemsPresenter />
+                                </StackPanel>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="ItemsControl.AlternationIndex" Value="0"><Setter TargetName="GroupLine" Property="Visibility" Value="Collapsed" /><Setter TargetName="GroupName" Property="Margin" Value="10,0,10,2" /></Trigger>
+                                    <DataTrigger Binding="{Binding Name}" Value=""><Setter TargetName="GroupLine" Property="Visibility" Value="Collapsed" /><Setter TargetName="GroupName" Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate></Setter.Value></Setter>
+                        </Style></GroupStyle.ContainerStyle></GroupStyle></ListBox.GroupStyle>
                     </ListBox>
                 </DockPanel>
             </Border>

@@ -8,7 +8,12 @@ public sealed partial class MainViewModel
 {
     private async Task RefreshRepositoryNameAsync(RepositoryBookmark bookmark)
     {
-        try { bookmark.UpdateDisplayName(await RepositoryDisplayName.ReadAsync(Git, bookmark.Path)); }
+        try
+        {
+            var (address, group) = await RepositoryRemoteGroup.ReadAsync(Git, bookmark.Path, Settings.Value.ServiceCloud.BaseUrl);
+            bookmark.UpdateDisplayName(RepositoryDisplayName.FromRemote(address));
+            bookmark.UpdateRemoteGroup(group);
+        }
         catch (Exception ex) when (ex is InvalidOperationException or System.IO.IOException)
         { AppLog.Write("读取仓库显示名称失败：" + bookmark.Path, ex); }
     }

@@ -28,6 +28,9 @@ public sealed class RepositoryBookmark(string path) : ObservableObject
     {
         if (Set(ref _displayName, string.IsNullOrWhiteSpace(name) ? null : name)) Notify(nameof(Name));
     }
+    public string RemoteGroup { get => _remoteGroup; private set => Set(ref _remoteGroup, value); }
+    public void UpdateRemoteGroup(string group) => RemoteGroup = group;
+    private string _remoteGroup = "";
 }
 
 public sealed class ChangedFile(string path, string? originalPath, char indexState, char worktreeState) : ObservableObject

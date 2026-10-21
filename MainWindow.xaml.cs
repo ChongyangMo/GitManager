@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using GitManager.Models;
 using GitManager.Services;
@@ -19,9 +20,38 @@ public partial class MainWindow : Window
         ViewModel = viewModel;
         InitializeComponent();
         DataContext = viewModel;
+        GroupRepositoriesByRemote();
         FitToWorkArea();
         ThemeService.Attach(this);
         Closed += (_, _) => viewModel.Dispose();
+    }
+    // 导航栏按远程 Git 服务分组，组内保持原有顺序；读取到分组后实时移入对应分组，并保持当前选中的仓库。
+    private void GroupRepositoriesByRemote()
+    {
+        var view = (ListCollectionView)CollectionViewSource.GetDefaultView(ViewModel.Repositories);
+        view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(RepositoryBookmark.RemoteGroup)) { CustomSort = new RemoteGroupComparer() });
+        view.LiveGroupingProperties.Add(nameof(RepositoryBookmark.RemoteGroup));
+        view.IsLiveGrouping = true;
+        ViewModel.Repositories.CollectionChanged += (_, e) =>
+        {
+            foreach (RepositoryBookmark bookmark in e.NewItems ?? Array.Empty<RepositoryBookmark>()) bookmark.PropertyChanged += RepositoryGroupChanged;
+            foreach (RepositoryBookmark bookmark in e.OldItems ?? Array.Empty<RepositoryBookmark>()) bookmark.PropertyChanged -= RepositoryGroupChanged;
+        };
+        foreach (var bookmark in ViewModel.Repositories) bookmark.PropertyChanged += RepositoryGroupChanged;
+    }
+    private void RepositoryGroupChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(RepositoryBookmark.RemoteGroup)) return;
+        Dispatcher.BeginInvoke(() => { if (RepositoryList.SelectedItem != ViewModel.Repository) RepositoryList.SelectedItem = ViewModel.Repository; }, System.Windows.Threading.DispatcherPriority.Background);
+    }
+    private sealed class RemoteGroupComparer : System.Collections.IComparer
+    {
+        public int Compare(object? x, object? y)
+        {
+            string a = (x as CollectionViewGroup)?.Name as string ?? "", b = (y as CollectionViewGroup)?.Name as string ?? "";
+            int order = Services.Repositories.RepositoryRemoteGroup.Order(a).CompareTo(Services.Repositories.RepositoryRemoteGroup.Order(b));
+            return order != 0 ? order : StringComparer.OrdinalIgnoreCase.Compare(a, b);
+        }
     }
     // 小屏幕上默认尺寸可能超出可用区域，按工作区比例收缩。
     private void FitToWorkArea()
