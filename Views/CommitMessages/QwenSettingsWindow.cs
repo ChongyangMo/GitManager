@@ -15,6 +15,7 @@ public sealed class QwenSettingsWindow : FormWindow
     {
         _previous = options;
         ShowOption("启用千问总结", options.Enabled);
+        ShowAction("用量统计", () => new QwenUsageWindow(options) { Owner = this }.ShowDialog());
         Validate = () =>
         {
             try

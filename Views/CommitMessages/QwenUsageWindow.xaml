@@ -1,0 +1,29 @@
+<Window x:Class="GitManager.Views.CommitMessages.QwenUsageWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="用量统计" Width="1020" Height="620" MinWidth="900" MinHeight="460" WindowStartupLocation="CenterOwner" Style="{StaticResource WorkspaceWindow}">
+    <Grid Margin="20">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <DockPanel><Button DockPanel.Dock="Right" Content="刷新" Style="{StaticResource WorkspaceButton}" Click="RefreshClicked" IsEnabled="{Binding CanRefresh}" /><ComboBox ItemsSource="{Binding Periods}" SelectedItem="{Binding Period}" Width="100" MinHeight="34" HorizontalAlignment="Left" /></DockPanel>
+        <UniformGrid Grid.Row="1" Columns="5" Margin="0,24,0,22">
+            <StackPanel><TextBlock Text="调用" Foreground="{DynamicResource MutedBrush}" /><TextBlock Text="{Binding Summary.Calls}" FontSize="23" Margin="0,6,0,0" /></StackPanel>
+            <StackPanel><TextBlock Text="输入 Token" Foreground="{DynamicResource MutedBrush}" /><TextBlock Text="{Binding Summary.Input}" FontSize="23" Margin="0,6,0,0" /></StackPanel>
+            <StackPanel><TextBlock Text="输出 Token" Foreground="{DynamicResource MutedBrush}" /><TextBlock Text="{Binding Summary.Output}" FontSize="23" Margin="0,6,0,0" /></StackPanel>
+            <StackPanel ToolTip="{Binding Summary.CacheRatio}"><TextBlock Text="缓存 Token" Foreground="{DynamicResource MutedBrush}" /><TextBlock Text="{Binding Summary.Cached}" FontSize="23" Margin="0,6,0,0" /></StackPanel>
+            <StackPanel><TextBlock Text="预估费用" Foreground="{DynamicResource MutedBrush}" /><TextBlock Text="{Binding Summary.Cost}" FontSize="18" Margin="0,9,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Summary.Cost}" /></StackPanel>
+        </UniformGrid>
+        <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="12,10">
+            <Grid TextBlock.Foreground="{DynamicResource MutedBrush}" TextBlock.FontSize="12">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="120" /><ColumnDefinition /><ColumnDefinition Width="75" /><ColumnDefinition Width="75" /><ColumnDefinition Width="75" /><ColumnDefinition Width="130" /><ColumnDefinition Width="70" /><ColumnDefinition Width="70" /></Grid.ColumnDefinitions>
+                <TextBlock Text="时间" /><TextBlock Grid.Column="1" Text="模型" /><TextBlock Grid.Column="2" Text="输入" /><TextBlock Grid.Column="3" Text="输出" /><TextBlock Grid.Column="4" Text="缓存" /><TextBlock Grid.Column="5" Text="预估费用" /><TextBlock Grid.Column="6" Text="耗时" /><TextBlock Grid.Column="7" Text="结果" />
+            </Grid>
+        </Border>
+        <ListBox Grid.Row="3" ItemsSource="{Binding Rows}" Style="{StaticResource WorkspaceList}">
+            <ListBox.ItemTemplate><DataTemplate>
+                <Grid ToolTip="{Binding Detail}" TextBlock.FontSize="12">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="120" /><ColumnDefinition /><ColumnDefinition Width="75" /><ColumnDefinition Width="75" /><ColumnDefinition Width="75" /><ColumnDefinition Width="130" /><ColumnDefinition Width="70" /><ColumnDefinition Width="70" /></Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding Time}" /><TextBlock Grid.Column="1" Text="{Binding Model}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Model}" /><TextBlock Grid.Column="2" Text="{Binding Input}" /><TextBlock Grid.Column="3" Text="{Binding Output}" /><TextBlock Grid.Column="4" Text="{Binding Cached}" /><TextBlock Grid.Column="5" Text="{Binding Cost}" /><TextBlock Grid.Column="6" Text="{Binding Duration}" /><TextBlock Grid.Column="7" Text="{Binding Result}" />
+                </Grid>
+            </DataTemplate></ListBox.ItemTemplate>
+        </ListBox>
+        <StackPanel Grid.Row="4" Margin="0,14,0,0"><TextBlock Text="{Binding Price}" ToolTip="{Binding PriceDetail}" Foreground="{DynamicResource MutedBrush}" /><TextBlock Text="{Binding Error}" Foreground="{DynamicResource DangerBrush}" Margin="0,4,0,0" /></StackPanel>
+    </Grid>
+</Window>

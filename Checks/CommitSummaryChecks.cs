@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using GitManager.Services;
 using GitManager.Services.CommitMessages;
+using GitManager.Services.CommitMessages.Usage;
 using GitManager.ViewModels;
 
 namespace GitManager.Checks;
@@ -33,17 +34,20 @@ internal static partial class Program
                 Check(selected.Length == paths.Length, "总结范围来自指定的真实改动");
                 if (qwenLive)
                 {
+                    int callsBefore = QwenUsageStore.Default.Read().Entries.Count;
                     string headBefore = (await Runner.RunAsync(repository, ["rev-parse", "HEAD"])).Output;
                     string stagedBefore = (await Runner.RunAsync(repository, ["diff", "--cached", "--raw", "-z"])).Output;
                     await vm.GenerateCommitMessageAsync();
                     Check(vm.Status == "已生成提交说明（千问）" && !string.IsNullOrWhiteSpace(vm.CommitMessage), "真实千问接口已返回提交说明：" + vm.Status);
                     Check(vm.SummaryCostLabel.StartsWith("预估 ¥", StringComparison.Ordinal), "真实调用已显示费用：" + vm.SummaryCostLabel);
+                    Check(QwenUsageStore.Default.Read().Entries.Count == callsBefore + 1, "真实调用持久保存一条用量记录");
                     await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                     SaveScreenshot(window, Path.Combine(Directory.GetCurrentDirectory(), "artifacts", "qwen-summary-cost.png"));
                     string actual = vm.CommitMessage;
                     await vm.GenerateCommitMessageAsync();
                     Check(vm.Status == "已生成提交说明（本地缓存）" && vm.CommitMessage == actual, "第二次总结直接复用本地结果");
                     Check(vm.SummaryCostLabel == "本次 ¥0", "本地缓存的本次费用为零");
+                    Check(QwenUsageStore.Default.Read().Entries.Count == callsBefore + 1, "本地缓存不增加接口调用次数");
                     Check((await Runner.RunAsync(repository, ["rev-parse", "HEAD"])).Output == headBefore
                         && (await Runner.RunAsync(repository, ["diff", "--cached", "--raw", "-z"])).Output == stagedBefore,
                         "真实总结没有修改仓库提交或暂存区");

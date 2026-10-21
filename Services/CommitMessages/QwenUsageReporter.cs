@@ -7,7 +7,7 @@ public sealed record QwenUsage(int? InputTokens, int? CachedTokens, int? OutputT
 
 public static class QwenUsageReporter
 {
-    public static QwenUsage ReadAndLog(QwenOptions options, JsonElement body, long milliseconds)
+    public static QwenUsage ReadAndLog(QwenOptions options, JsonElement body, long milliseconds, string? requestId = null)
     {
         int? input = null, cached = null, output = null;
         if (body.TryGetProperty("usage", out var usage) && usage.ValueKind == JsonValueKind.Object)
@@ -20,7 +20,8 @@ public static class QwenUsageReporter
         string ratio = input is > 0 && cached is >= 0 && cached <= input
             ? ((double)cached.Value / input.Value).ToString("P1", CultureInfo.InvariantCulture) : "未返回";
         AppLog.Write($"千问调用用量：模型 {options.Model}，输入 {Count(input)}，缓存命中 {Count(cached)}，输出 {Count(output)} 个令牌，"
-            + $"缓存比例 {ratio}，耗时 {milliseconds} 毫秒，{cost.Label}；{cost.Detail}");
+            + $"缓存比例 {ratio}，耗时 {milliseconds} 毫秒，{cost.Label}；{cost.Detail}"
+            + (requestId is null ? "" : "，调用编号 " + requestId));
         return new(input, cached, output, cost);
     }
 

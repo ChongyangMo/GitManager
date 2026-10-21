@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using GitManager.Services.CommitMessages.Usage;
 
 namespace GitManager.Services.CommitMessages;
 
@@ -22,6 +23,9 @@ public static class QwenClient
             max_tokens = options.MaxOutputTokens, temperature = 0.2, stream = false,
             messages = new[] { new { role = "system", content = QwenPrompt.System }, new { role = "user", content } } });
         var timer = Stopwatch.StartNew();
+        string requestId = Guid.NewGuid().ToString("N"), result = "失败";
+        var startedAt = DateTimeOffset.Now;
+        QwenUsage? usage = null;
         bool usageReported = false;
         try
         {
@@ -37,7 +41,7 @@ public static class QwenClient
             await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token);
             using var document = await JsonDocument.ParseAsync(stream, cancellationToken: timeout.Token);
             var body = document.RootElement;
-            var usage = QwenUsageReporter.ReadAndLog(options, body, timer.ElapsedMilliseconds);
+            usage = QwenUsageReporter.ReadAndLog(options, body, timer.ElapsedMilliseconds, requestId);
             usageReported = true;
             if (!body.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
                 throw new InvalidOperationException("千问没有返回提交说明，请重试。" + usage.Cost.Label);
@@ -46,15 +50,24 @@ public static class QwenClient
                 throw new InvalidOperationException("千问回复未完整结束，请重试或调整输出长度。" + usage.Cost.Label);
             string message = choice.GetProperty("message").GetProperty("content").GetString()?.Trim() ?? "";
             if (message.Length == 0 || message.Contains('\0')) throw new InvalidOperationException("千问返回的提交说明为空或无效。");
+            result = "成功";
             return new(message, usage.InputTokens, usage.CachedTokens, usage.OutputTokens, timer.ElapsedMilliseconds, usage.Cost);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         { throw new TimeoutException("千问总结等待超时，请重试。"); }
+        catch (OperationCanceledException) { result = "已取消"; throw; }
         catch (HttpRequestException) { throw new InvalidOperationException("无法连接千问，请检查网络和接口地址。"); }
         catch (JsonException) { throw new InvalidOperationException("千问返回了无法识别的响应，请检查接口地址。"); }
         finally
         {
             if (!usageReported) AppLog.Write("千问请求未取得完整用量，费用待确认，实际以账单为准");
+            QwenUsageStore.Default.TrySave(new QwenUsageEntry
+            {
+                Id = requestId, Time = startedAt, Model = options.Model, Result = result, Milliseconds = timer.ElapsedMilliseconds,
+                InputTokens = usage?.InputTokens, CachedTokens = usage?.CachedTokens, OutputTokens = usage?.OutputTokens,
+                Cost = usage?.Cost ?? new(null, null, "接口未返回完整用量，实际以账单为准"),
+                Pricing = options.Pricing is null ? null : JsonSerializer.Deserialize<QwenTokenPricing>(JsonSerializer.Serialize(options.Pricing))
+            });
         }
     }
 }

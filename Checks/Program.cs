@@ -21,6 +21,7 @@ internal static partial class Program
     {
         try
         {
+            if (args.Length == 1 && args[0] == "--qwen-usage") { RunQwenUsageChecks(); return 0; }
             if (args.Length == 1 && args[0] == "--qwen-cost") { RunQwenCostChecks(); return 0; }
             if (args.Length > 0 && args[0] == "--model-policy") { RunModelPolicyChecksAsync(args[1..]).GetAwaiter().GetResult(); return 0; }
             if (args.Length == 1 && args[0] == "--qwen") { RunQwenSummaryChecks(); return 0; }
