@@ -29,9 +29,14 @@ public sealed partial class MainViewModel
         var selected = Changes.Where(file => file.Selected).ToArray();
         if (selected.Length == 0)
         {
-            Status = "请先勾选需要提交的文件";
-            MessageBox.Show(Status, "自动总结", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
+            if (Changes.Count == 0)
+            {
+                Status = "没有未提交改动";
+                MessageBox.Show(Status, "自动总结", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            foreach (var file in Changes) file.Selected = true;
+            selected = [.. Changes];
         }
         string root = Root;
         long revision = _commitMessageRevision, generation = ++_commitSummaryGeneration;

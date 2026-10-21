@@ -88,6 +88,10 @@ internal static partial class Program
                 await vm.GenerateCommitMessageAsync();
                 await pending;
                 Check(!vm.IsGeneratingCommitMessage && vm.CommitMessage == draft, "取消生成会保留已有提交说明");
+                foreach (var file in vm.Changes) file.Selected = false;
+                await vm.GenerateCommitMessageAsync();
+                var all = await new LocalCommitSummaryReader(vm.Git).ReadAsync(repository, vm.Changes.ToArray());
+                Check(vm.Changes.All(file => file.Selected) && vm.CommitMessage == LocalCommitSummary.Generate(all.Files), "未勾选时自动总结会勾选并总结全部文件");
                 await CheckLocalSummaryFactsAsync();
             }
             catch (Exception ex) { failure = ex; }
