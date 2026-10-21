@@ -165,6 +165,14 @@ internal static partial class Program
         Console.WriteLine("通过：" + label);
     }
 
+    // 设置 ActiveTab 会经 MainWindow.TabChanged 启动一次无人等待的读取，占用 IsBusy；断言或发起新操作前先等它结束。
+    private static async Task WaitForIdleAsync(MainViewModel viewModel, string label, int seconds = 15)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(seconds);
+        while ((viewModel.IsBusy || viewModel.IsHistoryLoading) && DateTimeOffset.UtcNow < deadline) await Task.Delay(20);
+        if (viewModel.IsBusy || viewModel.IsHistoryLoading) throw new TimeoutException($"{label}：等待 {seconds} 秒后操作仍未结束。");
+    }
+
     private static void RenderPreview(string repository, string screenshotPath)
     {
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
@@ -186,7 +194,7 @@ internal static partial class Program
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 SaveScreenshot(window, screenshotPath);
                 viewModel.ActiveTab = 1;
-                while (viewModel.IsBusy) await Task.Delay(30);
+                await WaitForIdleAsync(viewModel, "切换到历史页");
                 await viewModel.ShowCommitAsync();
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 if (viewModel.HistoryFiles.Count == 0 || viewModel.Comparison is null) throw new InvalidOperationException("历史界面未加载真实提交。");
@@ -198,11 +206,13 @@ internal static partial class Program
                 await viewModel.SetThemeAsync("Dark");
                 if (!ThemeService.IsDark) throw new InvalidOperationException("切换黑夜模式未生效。");
                 viewModel.ActiveTab = MainViewModel.ReadmeTab;
+                await WaitForIdleAsync(viewModel, "切换到说明页");
                 await viewModel.ShowActiveTabAsync();
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 if (viewModel.Readme is null || viewModel.Comparison is not null) throw new InvalidOperationException("说明页未读取 README。");
                 SaveScreenshot(window, Path.ChangeExtension(screenshotPath, "readme.png"));
                 viewModel.ActiveTab = 0;
+                await WaitForIdleAsync(viewModel, "切换到改动页");
                 await viewModel.ShowActiveTabAsync();
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 SaveScreenshot(window, Path.ChangeExtension(screenshotPath, "dark.png"));

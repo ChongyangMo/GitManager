@@ -12,7 +12,7 @@ internal static partial class Program
         if (viewModel.RemoteHistory.Count > 0)
         {
             viewModel.ActiveTab = 2;
-            while (viewModel.IsBusy) await Task.Delay(20);
+            await WaitForIdleAsync(viewModel, "切换到远程版本页");
             await viewModel.ShowRemoteCommitAsync();
             if (viewModel.RemoteFiles.Count == 0 || viewModel.Comparison is null) throw new InvalidOperationException("远程版本界面未显示真实提交文件。");
             await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
@@ -23,11 +23,11 @@ internal static partial class Program
         if (viewModel.History.Count > 1)
         {
             viewModel.ActiveTab = 3;
-            while (viewModel.IsBusy) await Task.Delay(20);
+            await WaitForIdleAsync(viewModel, "切换到版本对比页");
             viewModel.ComparisonBefore = viewModel.VersionChoices.First(item => item.Source.StartsWith("本地 ", StringComparison.Ordinal) && item.Commit.Hash == viewModel.History[^1].Hash);
-            while (viewModel.IsBusy) await Task.Delay(20);
+            await WaitForIdleAsync(viewModel, "选择对比起点");
             viewModel.ComparisonAfter = viewModel.VersionChoices.First(item => item.Source.StartsWith("本地 ", StringComparison.Ordinal) && item.Commit.Hash == viewModel.History[0].Hash);
-            while (viewModel.IsBusy) await Task.Delay(20);
+            await WaitForIdleAsync(viewModel, "选择对比终点");
             await viewModel.CompareSelectedVersionsAsync();
             if (viewModel.VersionFiles.Count == 0 || viewModel.Comparison is null) throw new InvalidOperationException("任意版本对比未加载实际文件差异。");
             await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);

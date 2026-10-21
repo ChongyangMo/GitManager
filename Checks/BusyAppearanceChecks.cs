@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -10,6 +11,9 @@ internal static partial class Program
 {
     private static async Task VerifyBusyAppearanceAsync(Window window, MainViewModel viewModel, string path)
     {
+        await WaitForIdleAsync(viewModel, "检查操作中的界面前");
+        if (File.Exists(path)) File.Delete(path);
+        bool ran = false;
         int idleWhite = CountWhitePixels(window), busyWhite = 0;
         string branch = viewModel.Branch;
         var rows = viewModel.DiffRows;
@@ -20,11 +24,13 @@ internal static partial class Program
         viewModel.Branches.CollectionChanged += changed;
         await viewModel.ExecuteAsync("正在检查操作中的界面", async () =>
         {
+            ran = true;
             await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
             SaveScreenshot(window, path);
             busyWhite = CountWhitePixels(window);
             await viewModel.Git.ReadAsync(viewModel.Root);
         });
+        if (!ran || !File.Exists(path)) throw new InvalidOperationException("操作中界面检查的操作未实际执行，未生成截图。");
         Console.WriteLine($"白色像素：空闲 {idleWhite}，操作中 {busyWhite}");
         if (busyWhite > idleWhite + window.ActualWidth * window.ActualHeight / 100)
             throw new InvalidOperationException("操作期间出现了大面积白色背景。");
