@@ -30,6 +30,7 @@ public sealed partial class MainViewModel
     {
         await DiscoverRepositoriesCoreAsync();
         await RefreshRepositoryNamesAsync();
+        _ = RefreshRepositoryPushIndicatorsAsync();
     });
 
     public Task DiscoverOnActivationAsync() => IsBusy || DateTimeOffset.UtcNow - _lastDiscovery < TimeSpan.FromMinutes(1)

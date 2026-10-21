@@ -58,7 +58,7 @@ internal static partial class Program
                     && imported.Any(entry => entry.Result == "历史记录" && entry.InputTokens == 1337 && entry.Cost.Detail.Contains("$0.005566")),
                     "历史 Claude 调用导入为 Claude 记录，带编号的调用不重复计入");
                 var mixed = new GitManager.ViewModels.CommitMessages.Usage.QwenUsageSummary([.. imported, new QwenUsageEntry { Id = legacyId, Time = DateTimeOffset.Now, Model = "qwen", InputTokens = 100, CachedTokens = 0, OutputTokens = 1, Cost = new(0.1m, 0.1m, "") }]);
-                Check(mixed.Providers == "Claude 2 · 千问 1" && mixed.Cost == "¥0.1" && !mixed.Cached.Contains("待确认"),"汇总分别统计 Claude 与千问次数，Claude 不计入千问费用：" + mixed.Providers + " " + mixed.Cost);
+                Check(mixed.Providers == "Claude 2 · Codex 0 · 千问 1" && mixed.Cost == "¥0.1" && !mixed.Cached.Contains("待确认"),"汇总分别统计 Claude、Codex 与千问次数，账号额度不计入千问费用：" + mixed.Providers + " " + mixed.Cost);
                 var window = new QwenUsageWindow(options) { ShowInTaskbar = false, ShowActivated = false,
                     Left = -30000, Top = -30000, WindowStartupLocation = WindowStartupLocation.Manual };
                 window.Show();

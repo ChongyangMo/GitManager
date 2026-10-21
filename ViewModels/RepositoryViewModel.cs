@@ -41,6 +41,7 @@ public sealed partial class MainViewModel
         await RefreshRepositoryNamesAsync();
         if (HasRepository) await RefreshCoreAsync();
         else if (Repositories.FirstOrDefault() is { } first) await OpenCoreAsync(first.Path);
+        _ = RefreshRepositoryPushIndicatorsAsync();
     });
 
     private async Task RefreshCoreAsync()

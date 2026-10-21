@@ -9,8 +9,9 @@ public sealed partial class MainViewModel
     {
         _ = options.Endpoint();
         if (!string.IsNullOrWhiteSpace(apiKey)) QwenCredentials.Save(options, apiKey);
-        if (options.Enabled && !Settings.Value.LuxAi.Enabled && !SummaryProviderOrder.ClaudeInstalled(Settings.Value.Claude) && QwenCredentials.Read(options) is not { Length: > 0 })
-            throw new InvalidOperationException("本机没有 Claude，请填写此接口地址对应的千问 API Key。");
+        if (options.Enabled && !Settings.Value.LuxAi.Enabled && !SummaryProviderOrder.ClaudeInstalled(Settings.Value.Claude)
+            && !SummaryProviderOrder.CodexInstalled(Settings.Value.Codex) && QwenCredentials.Read(options) is not { Length: > 0 })
+            throw new InvalidOperationException("请登录本机 Claude、Codex，或填写此接口地址对应的千问 API Key。");
         CancelCommitSummary();
         var previous = Settings.Value.Qwen;
         Settings.Value.Qwen = options;

@@ -3,9 +3,10 @@ using GitManager.Models;
 
 namespace GitManager.Services;
 
-public sealed partial class GitRepositoryService(GitRunner runner)
+public sealed partial class GitRepositoryService(GitRunner runner, GitHub.GitHubOptions? gitHubOptions = null)
 {
     public GitRunner Runner { get; } = runner;
+    private GitHub.GitHubOptions GitHubOptions { get; } = gitHubOptions ?? new();
     private Task<GitResult> Run(string root, params string[] args) => Runner.RunAsync(root, args);
 
     public async Task<string> OpenAsync(string directory, CancellationToken cancellationToken = default)

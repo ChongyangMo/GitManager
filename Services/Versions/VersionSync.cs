@@ -9,7 +9,7 @@ public sealed partial class GitRepositoryService
         await EnsureNoOperationAsync(root);
         var state = await ReadVersionsAsync(root, target);
         if (!state.HasRemote || state.Target is null) throw new InvalidOperationException("请先设置远程仓库并选择分支。");
-        if (fetch) await FetchVersionsAsync(root, state.RemoteName);
+        if (fetch) await FetchVersionsAsync(root, state.RemoteName, createMissing: operation is "push" or "sync");
         state = await ReadVersionsAsync(root, state.Target);
         var destination = state.Target ?? throw new InvalidOperationException("远程分支已变化，请重新选择。");
         if (operation == "fetch") return new("远程版本已更新");

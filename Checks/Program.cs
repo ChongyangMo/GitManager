@@ -21,6 +21,10 @@ internal static partial class Program
     {
         try
         {
+            if (args is ["--ensure-github-remote", var githubRoot, var githubRemote]) { RunGitHubRemoteChecksAsync(githubRoot, githubRemote).GetAwaiter().GetResult(); return 0; }
+            if (args.Length > 2 && args[0] == "--codex-live") { RunCodexLiveAsync(args[1], args[2..]).GetAwaiter().GetResult(); return 0; }
+            if (args.Length >= 3 && args[0] == "--push-indicators") { RunPushIndicatorChecks(args[1], args[2..]); return 0; }
+            if (args is ["--layout", var layoutRepository, var layoutScreenshot]) { RunLayoutChecks(layoutRepository, layoutScreenshot); return 0; }
             if (args is ["--luxai-ui", var screenshot]) { RenderLuxAiSettings(screenshot); return 0; }
             if (args is ["--luxai-session"]) { RunLuxAiSessionAsync().GetAwaiter().GetResult(); return 0; }
             if (args.Length >= 3 && args[0] == "--luxai-live") { RunLuxAiLiveAsync(args[1], args[2..]).GetAwaiter().GetResult(); return 0; }
@@ -250,7 +254,7 @@ internal static partial class Program
         {
             var bounds = new Rect(0, 0, content.ActualWidth, content.ActualHeight);
             context.DrawRectangle(window.Background, null, bounds);
-            context.DrawRectangle(new VisualBrush(content), null, bounds);
+            context.DrawRectangle(new VisualBrush(content) { ViewboxUnits = BrushMappingMode.Absolute, Viewbox = bounds }, null, bounds);
         }
         image.Render(drawing);
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));

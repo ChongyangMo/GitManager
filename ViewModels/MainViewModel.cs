@@ -55,7 +55,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public MainViewModel(SettingsStore settings)
     {
         Settings = settings;
-        Git = new(new GitRunner(() => Settings.Value.GitExecutablePath, _lifetimeCancellation.Token));
+        Git = new(new GitRunner(() => Settings.Value.GitExecutablePath, _lifetimeCancellation.Token), Settings.Value.GitHub);
         Repositories.CollectionChanged += RepositoryBookmarksChanged;
         foreach (string path in settings.Value.Repositories.Distinct(StringComparer.OrdinalIgnoreCase)) Repositories.Add(new(path));
     }
@@ -69,6 +69,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _workspaceGeneration++;
         _backgroundFetchCancellation?.Cancel();
         _busyFeedbackTimer?.Stop();
+        _repositoryPushTimer?.Stop();
         _lifetimeCancellation.Cancel();
         _lifetimeCancellation.Dispose();
     }
@@ -115,6 +116,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         await RefreshRepositoryNamesAsync();
         string? path = repository ?? Settings.Value.LastRepository ?? Repositories.FirstOrDefault()?.Path;
         if (path is not null) await OpenCoreAsync(path);
+        StartRepositoryPushMonitoring();
     });
 
     private static void Replace<T>(ObservableCollection<T> destination, IEnumerable<T> source)

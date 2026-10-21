@@ -7,7 +7,7 @@ public sealed partial class MainViewModel
         if (_versions?.HasRemote != true) throw new InvalidOperationException("请先设置远程仓库。");
         try
         {
-            await FetchRemoteCoreAsync(tolerateFailure: false);
+            await FetchRemoteCoreAsync(tolerateFailure: false, createMissing: operation is "push" or "sync");
             var outcome = await Git.SynchronizeVersionsAsync(Root, SelectedRemoteBranch, operation, fetch: false);
             if (outcome.HasConflicts) ActiveTab = ChangesTab;
             await RefreshCoreAsync();

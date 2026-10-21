@@ -10,16 +10,17 @@ public sealed class QwenSettingsWindow : FormWindow
     private readonly QwenOptions _previous;
 
     public QwenSettingsWindow(QwenOptions options, ClaudeOptions? claude = null,
-        Func<Window, Task>? openLuxAi = null, Func<Services.LuxAi.LuxAiOptions>? luxAi = null) : base("大模型总结",
+        Func<Window, Task>? openLuxAi = null, Func<Services.LuxAi.LuxAiOptions>? luxAi = null, CodexOptions? codex = null) : base("大模型总结",
         new("千问接口地址", options.BaseUrl), new("千问模型", options.Model),
         new(HasStoredKey(options) ? "千问 API Key（已保存，留空保留）" : "千问 API Key", required: false, secret: true))
     {
         _previous = options;
         claude ??= new();
-        ShowNote("总结顺位", "正在检测本机 Claude…");
+        codex ??= new();
+        ShowNote("总结顺位", "正在检测本机登录…");
         Loaded += async (_, _) =>
         {
-            try { ShowNote("总结顺位", await SummaryProviderOrder.DescribeAsync(options, claude, default, luxAi?.Invoke())); }
+            try { ShowNote("总结顺位", await SummaryProviderOrder.DescribeAsync(options, claude, default, luxAi?.Invoke(), codex)); }
             catch (Exception ex) { ShowNote("总结顺位", "检测失败：" + AppLog.Clean(ex.Message)); }
         };
         ShowOption("启用大模型总结", options.Enabled);
@@ -27,7 +28,7 @@ public sealed class QwenSettingsWindow : FormWindow
         if (openLuxAi is not null) ShowAction("集团 AI", async () =>
         {
             await openLuxAi(this);
-            try { ShowNote("总结顺位", await SummaryProviderOrder.DescribeAsync(options, claude, default, luxAi?.Invoke())); }
+            try { ShowNote("总结顺位", await SummaryProviderOrder.DescribeAsync(options, claude, default, luxAi?.Invoke(), codex)); }
             catch (Exception ex) { ShowNote("总结顺位", AppLog.Clean(ex.Message)); }
         });
         Validate = () =>
@@ -36,8 +37,9 @@ public sealed class QwenSettingsWindow : FormWindow
             {
                 var value = Options;
                 _ = value.Endpoint();
-                if (value.Enabled && luxAi?.Invoke() is not { Enabled: true } && !SummaryProviderOrder.ClaudeInstalled(claude) && string.IsNullOrWhiteSpace(Fields[2].Value) && QwenCredentials.Read(value) is not { Length: > 0 })
-                    return "本机没有 Claude，请填写此接口地址对应的千问 API Key。";
+                if (value.Enabled && luxAi?.Invoke() is not { Enabled: true } && !SummaryProviderOrder.ClaudeInstalled(claude)
+                    && !SummaryProviderOrder.CodexInstalled(codex) && string.IsNullOrWhiteSpace(Fields[2].Value) && QwenCredentials.Read(value) is not { Length: > 0 })
+                    return "请登录本机 Claude、Codex，或填写此接口地址对应的千问 API Key。";
                 return null;
             }
             catch (Exception ex) { return AppLog.Clean(ex.Message); }
@@ -63,7 +65,7 @@ public sealed class QwenSettingsWindow : FormWindow
         try
         {
             var dialog = new QwenSettingsWindow(viewModel.Settings.Value.Qwen, viewModel.Settings.Value.Claude,
-                window => LuxAiSettingsWindow.OpenAsync(window, viewModel), () => viewModel.Settings.Value.LuxAi) { Owner = owner };
+                window => LuxAiSettingsWindow.OpenAsync(window, viewModel), () => viewModel.Settings.Value.LuxAi, viewModel.Settings.Value.Codex) { Owner = owner };
             if (dialog.ShowDialog() == true) await viewModel.SaveQwenSettingsAsync(dialog.Options, dialog.Fields[2].Value);
             dialog.Fields[2].Value = "";
         }

@@ -17,7 +17,7 @@ public sealed class RepositorySummaryRouting(GitRepositoryService git, SettingsS
                 ? new(SummaryModelTarget.GroupAi, reason)
                 : new(SummaryModelTarget.LocalRules, reason + "，未启用集团 AI");
         }
-        return new(SummaryModelTarget.PublicModels, "公网仓库，Claude 优先、千问兜底");
+        return new(SummaryModelTarget.PublicModels, "公网仓库，Claude → Codex → 千问");
     }
 
     public async Task EnsureAsync(IEnumerable<string> roots, SummaryModelTarget expected, CancellationToken token)

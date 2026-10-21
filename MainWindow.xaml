@@ -1,8 +1,9 @@
-<Window x:Class="GitManager.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:views="clr-namespace:GitManager.Views" xmlns:versions="clr-namespace:GitManager.Views.Versions" xmlns:vm="clr-namespace:GitManager.ViewModels" Title="GitManager" Width="1200" Height="760" MinWidth="980" MinHeight="620" WindowStartupLocation="CenterScreen" Style="{StaticResource WorkspaceWindow}" AllowDrop="True" Drop="RepositoryDropped" KeyDown="WindowKeyDown">
+<Window x:Class="GitManager.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:views="clr-namespace:GitManager.Views" xmlns:versions="clr-namespace:GitManager.Views.Versions" xmlns:vm="clr-namespace:GitManager.ViewModels" xmlns:layout="clr-namespace:GitManager.Views.Layout" Title="GitManager" Width="1200" Height="760" MinWidth="980" MinHeight="620" WindowStartupLocation="CenterScreen" Style="{StaticResource WorkspaceWindow}" AllowDrop="True" Drop="RepositoryDropped" KeyDown="WindowKeyDown">
     <Grid views:BusyFeedback.DeferDisabledLook="{Binding IsBusyFeedbackDeferred}">
         <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="32" /></Grid.RowDefinitions>
         <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition Width="214" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <layout:CollapsiblePane SettingsKey="Repositories" Label="仓库" Orientation="Horizontal">
             <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
                 <DockPanel IsEnabled="{Binding IsIdle}">
                     <StackPanel DockPanel.Dock="Top" Margin="16,22,16,18">
@@ -17,6 +18,9 @@
                         </Style></ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate><DataTemplate>
                             <DockPanel ToolTip="{Binding ConflictHint}">
+                                <Ellipse x:Name="PendingPushDot" DockPanel.Dock="Right" Width="8" Height="8" Margin="8,0,2,0" VerticalAlignment="Center"
+                                         Fill="{DynamicResource DangerBrush}" Visibility="{Binding HasPendingPush, Converter={StaticResource BoolVisibility}}"
+                                         ToolTip="{Binding PendingPushHint}" AutomationProperties.Name="{Binding PendingPushHint}" />
                                 <Button x:Name="ConflictButton" DockPanel.Dock="Right" Content="同名" Tag="{Binding}" Visibility="Collapsed"
                                         Style="{StaticResource QuietButton}" Foreground="{DynamicResource WarningBrush}" MinWidth="34" MinHeight="24" Padding="4,0"
                                         Margin="5,0,0,0" Click="CompareRepositoryCopiesClicked" ToolTip="比较同名仓库"/>
@@ -43,6 +47,7 @@
                     </ListBox>
                 </DockPanel>
             </Border>
+            </layout:CollapsiblePane>
             <Grid Grid.Column="1">
                 <Grid.RowDefinitions><RowDefinition Height="64" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                 <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Background="{DynamicResource CardBrush}">
@@ -55,6 +60,7 @@
                 <Grid Grid.Row="2" IsEnabled="{Binding CanOperate}">
                     <Grid.Style><Style TargetType="Grid"><Style.Triggers><DataTrigger Binding="{Binding IsWorkspaceLoading}" Value="True"><Setter Property="Visibility" Value="Hidden" /></DataTrigger></Style.Triggers></Style></Grid.Style>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="360" MinWidth="285" /><ColumnDefinition Width="5" /><ColumnDefinition Width="*" MinWidth="360" /></Grid.ColumnDefinitions>
+                    <layout:CollapsiblePane SettingsKey="Workspace" Label="记录" Orientation="Horizontal">
                     <TabControl x:Name="WorkspaceTabs" SelectedIndex="{Binding ActiveTab}" SelectionChanged="TabChanged">
                         <TabItem Header="说明">
                             <ScrollViewer VerticalScrollBarVisibility="Auto" TextElement.Foreground="{DynamicResource TextBrush}">
@@ -100,18 +106,27 @@
                         <TabItem Header="{Binding HistoryTitle}">
                             <Grid>
                                 <Grid.RowDefinitions><RowDefinition Height="3*" /><RowDefinition Height="5" /><RowDefinition Height="2*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <layout:CollapsiblePane SettingsKey="LocalHistory" Label="提交记录">
                                 <ListBox x:Name="HistoryList" ItemsSource="{Binding History}" SelectedItem="{Binding SelectedCommit}" Style="{StaticResource WorkspaceList}" ItemTemplate="{StaticResource CommitRowTemplate}" SelectionChanged="CommitSelected" />
+                                </layout:CollapsiblePane>
                                 <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" Background="{DynamicResource BorderBrush}" />
-                                <ListBox x:Name="HistoryFilesList" Grid.Row="2" ItemsSource="{Binding HistoryFiles}" SelectedItem="{Binding SelectedHistoryFile}" SelectionChanged="HistoryFileSelected"><ListBox.Style><Style TargetType="ListBox" BasedOn="{StaticResource WorkspaceList}"><Style.Triggers><DataTrigger Binding="{Binding IsHistoryLoading}" Value="True"><DataTrigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="0.55" BeginTime="0:0:0.25" Duration="0:0:0.12" /></Storyboard></BeginStoryboard></DataTrigger.EnterActions><DataTrigger.ExitActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.08" /></Storyboard></BeginStoryboard></DataTrigger.ExitActions></DataTrigger></Style.Triggers></Style></ListBox.Style><ListBox.ItemTemplate><DataTemplate><DockPanel ToolTip="{Binding Path}"><TextBlock DockPanel.Dock="Right" Text="{Binding State}" Foreground="{DynamicResource MutedBrush}" Margin="8,0,0,0" /><TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" /></DockPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
+                                <layout:CollapsiblePane Grid.Row="2" SettingsKey="LocalFiles" Label="文件">
+                                <ListBox x:Name="HistoryFilesList" ItemsSource="{Binding HistoryFiles}" SelectedItem="{Binding SelectedHistoryFile}" SelectionChanged="HistoryFileSelected"><ListBox.Style><Style TargetType="ListBox" BasedOn="{StaticResource WorkspaceList}"><Style.Triggers><DataTrigger Binding="{Binding IsHistoryLoading}" Value="True"><DataTrigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="0.55" BeginTime="0:0:0.25" Duration="0:0:0.12" /></Storyboard></BeginStoryboard></DataTrigger.EnterActions><DataTrigger.ExitActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.08" /></Storyboard></BeginStoryboard></DataTrigger.ExitActions></DataTrigger></Style.Triggers></Style></ListBox.Style><ListBox.ItemTemplate><DataTemplate><DockPanel ToolTip="{Binding Path}"><TextBlock DockPanel.Dock="Right" Text="{Binding State}" Foreground="{DynamicResource MutedBrush}" Margin="8,0,0,0" /><TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" /></DockPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
+                                </layout:CollapsiblePane>
                                 <Border Grid.Row="3" Padding="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"><StackPanel Orientation="Horizontal"><Button Content="恢复此文件" Style="{StaticResource WorkspaceButton}" Margin="0,0,8,0" Click="RestoreFileClicked" /><Button Content="恢复此版本" Style="{StaticResource WorkspaceButton}" Click="RestoreVersionClicked" /></StackPanel></Border>
                             </Grid>
                         </TabItem>
                         <TabItem Header="{Binding RemoteTitle}"><versions:RemoteHistoryView /></TabItem>
                         <TabItem Header="对比"><versions:VersionComparisonView /></TabItem>
                     </TabControl>
+                    </layout:CollapsiblePane>
                     <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="{DynamicResource BorderBrush}" />
-                    <views:DiffViewer Grid.Column="2" Rows="{Binding DiffRows}" Comparison="{Binding Comparison}"><views:DiffViewer.Style><Style TargetType="views:DiffViewer"><Style.Triggers><DataTrigger Binding="{Binding IsHistoryLoading}" Value="True"><DataTrigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="0.55" BeginTime="0:0:0.25" Duration="0:0:0.12" /></Storyboard></BeginStoryboard></DataTrigger.EnterActions><DataTrigger.ExitActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.08" /></Storyboard></BeginStoryboard></DataTrigger.ExitActions></DataTrigger><DataTrigger Binding="{Binding ActiveTab}" Value="{x:Static vm:MainViewModel.ReadmeTab}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></views:DiffViewer.Style></views:DiffViewer>
-                    <views:ReadmeView Grid.Column="2" Document="{Binding Readme}"><views:ReadmeView.Style><Style TargetType="views:ReadmeView"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding ActiveTab}" Value="{x:Static vm:MainViewModel.ReadmeTab}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></views:ReadmeView.Style></views:ReadmeView>
+                    <layout:CollapsiblePane Grid.Column="2" SettingsKey="Preview" Label="差异" Orientation="Horizontal">
+                    <Grid>
+                    <views:DiffViewer Rows="{Binding DiffRows}" Comparison="{Binding Comparison}"><views:DiffViewer.Style><Style TargetType="views:DiffViewer"><Style.Triggers><DataTrigger Binding="{Binding IsHistoryLoading}" Value="True"><DataTrigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="0.55" BeginTime="0:0:0.25" Duration="0:0:0.12" /></Storyboard></BeginStoryboard></DataTrigger.EnterActions><DataTrigger.ExitActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.08" /></Storyboard></BeginStoryboard></DataTrigger.ExitActions></DataTrigger><DataTrigger Binding="{Binding ActiveTab}" Value="{x:Static vm:MainViewModel.ReadmeTab}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></views:DiffViewer.Style></views:DiffViewer>
+                    <views:ReadmeView Document="{Binding Readme}"><views:ReadmeView.Style><Style TargetType="views:ReadmeView"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding ActiveTab}" Value="{x:Static vm:MainViewModel.ReadmeTab}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></views:ReadmeView.Style></views:ReadmeView>
+                    </Grid>
+                    </layout:CollapsiblePane>
                 </Grid>
                 <TextBlock Grid.Row="1" Grid.RowSpan="2" Text="{Binding Status}" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="480" IsHitTestVisible="False" Visibility="{Binding IsWorkspaceLoadingHintVisible, Converter={StaticResource BoolVisibility}}" />
                 <TextBlock Grid.Row="2" Text="添加仓库" FontSize="20" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding HasRepository}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>

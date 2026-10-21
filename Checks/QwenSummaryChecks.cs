@@ -68,6 +68,7 @@ internal static partial class Program
                 if (QwenCredentials.Read(options) is null)
                 {
                     settings.Value.Claude.Enabled = false;
+                    settings.Value.Codex.Enabled = false;
                     bool blocked = false;
                     try { await new CommitMessageGenerator(Git, settings).GenerateAsync(root, files, default); }
                     catch (InvalidOperationException ex) { blocked = ex.Message.Contains("API Key"); }
@@ -81,7 +82,8 @@ internal static partial class Program
                 var deadline = DateTimeOffset.UtcNow.AddSeconds(20);
                 while (note.Text.StartsWith("正在检测", StringComparison.Ordinal) && DateTimeOffset.UtcNow < deadline) await Task.Delay(50);
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
-                Check(note.Text.Contains("1. Claude") && note.Text.Contains("2. 千问") && note.Text.Contains("当前使用："), "设置窗口展示大模型总结顺位");
+                Check(note.Text.Contains("外网：Claude") && note.Text.IndexOf("Codex", StringComparison.Ordinal) > note.Text.IndexOf("Claude", StringComparison.Ordinal)
+                    && note.Text.IndexOf("千问", StringComparison.Ordinal) > note.Text.IndexOf("Codex", StringComparison.Ordinal), "设置窗口展示 Claude、Codex、千问顺位");
                 Console.WriteLine("总结顺位：" + Environment.NewLine + note.Text);
                 Check(Descendants(window).OfType<PasswordBox>().Count(box => box.IsVisible) == 1, "千问设置使用密码输入框");
                 Check(window.Options.Model == "qwen3.8-flash" && window.OptionValue, "设置默认启用千问3.8 Flash");

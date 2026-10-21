@@ -20,10 +20,11 @@ internal static partial class Program
             try
             {
                 var settings = new SettingsStore();
-                string note = await SummaryProviderOrder.DescribeAsync(settings.Value.Qwen, settings.Value.Claude, default, settings.Value.LuxAi);
-                Check(note.Contains("内网：集团 AI") && note.Contains("外网：Claude 优先"), "真实设置同时显示内网和外网的模型顺位");
+                string note = await SummaryProviderOrder.DescribeAsync(settings.Value.Qwen, settings.Value.Claude, default, settings.Value.LuxAi, settings.Value.Codex);
+                Check(note.Contains("内网：集团 AI") && note.Contains("外网：Claude") && note.IndexOf("Codex", StringComparison.Ordinal) > note.IndexOf("Claude", StringComparison.Ordinal)
+                    && note.IndexOf("千问", StringComparison.Ordinal) > note.IndexOf("Codex", StringComparison.Ordinal), "真实设置同时显示内网和外网的模型顺位");
                 Console.WriteLine(note);
-                var window = new QwenSettingsWindow(settings.Value.Qwen, settings.Value.Claude, luxAi: () => settings.Value.LuxAi)
+                var window = new QwenSettingsWindow(settings.Value.Qwen, settings.Value.Claude, luxAi: () => settings.Value.LuxAi, codex: settings.Value.Codex)
                 {
                     ShowInTaskbar = false, ShowActivated = false, Left = -30000, Top = -30000,
                     WindowStartupLocation = WindowStartupLocation.Manual
@@ -57,7 +58,7 @@ internal static partial class Program
         Check((await routing.ResolveAsync([root], default)).Target == SummaryModelTarget.GroupAi, "服务云仓库走集团 AI");
         await Runner.RunAsync(root, ["remote", "set-url", "origin", "https://github.com/ChongyangMo/GitManager.git"]);
         Check(await policy.ExternalModelBlockReasonAsync(root, default) is null, "正常公网仓库继续允许模型");
-        Check((await routing.ResolveAsync([root], default)).Target == SummaryModelTarget.PublicModels, "启用集团 AI 后公网仓库仍走 Claude 和千问");
+        Check((await routing.ResolveAsync([root], default)).Target == SummaryModelTarget.PublicModels, "启用集团 AI 后公网仓库仍走 Claude、Codex 和千问");
         await Runner.RunAsync(root, ["remote", "add", "servicecloud", "https://github.com/ChongyangMo/GitManager.git"]);
         Check(await policy.ExternalModelBlockReasonAsync(root, default) is not null, "存在 servicecloud 远程时整个仓库不调用公网模型");
         await Runner.RunAsync(root, ["remote", "remove", "servicecloud"]);

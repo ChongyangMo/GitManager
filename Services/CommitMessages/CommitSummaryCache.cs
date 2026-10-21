@@ -14,6 +14,10 @@ public sealed class CommitSummaryCache(string directory)
         Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Root = Path.GetFullPath(root), Provider = "claude-code",
             options.Model, Prompt = QwenPrompt.Version, QwenPrompt.System, content.Fingerprint, content.Text }))));
 
+    public static string CodexKey(string root, CodexOptions options, CommitContent content) => Convert.ToHexString(SHA256.HashData(
+        Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Root = Path.GetFullPath(root), Provider = "codex",
+            options.Model, options.ReasoningEffort, Prompt = QwenPrompt.Version, QwenPrompt.System, content.Fingerprint, content.Text }))));
+
     public string? Read(string key)
     {
         try

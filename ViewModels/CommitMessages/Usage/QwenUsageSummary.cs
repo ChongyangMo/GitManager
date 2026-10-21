@@ -7,7 +7,7 @@ namespace GitManager.ViewModels.CommitMessages.Usage;
 public sealed class QwenUsageSummary(IReadOnlyList<QwenUsageEntry> entries)
 {
     public string Calls => entries.Count.ToString("N0");
-    public string Providers => entries.Count == 0 ? "" : string.Join(" · ", new[] { QwenUsageEntry.ClaudeProvider, QwenUsageEntry.QwenProvider }
+    public string Providers => entries.Count == 0 ? "" : string.Join(" · ", new[] { QwenUsageEntry.ClaudeProvider, QwenUsageEntry.CodexProvider, QwenUsageEntry.QwenProvider }
         .Select(provider => $"{provider} {entries.Count(entry => entry.ProviderLabel == provider):N0}"));
     public string Input => Tokens(entry => entry.InputTokens);
     public string Output => Tokens(entry => entry.OutputTokens);

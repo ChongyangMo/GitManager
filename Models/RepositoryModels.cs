@@ -7,6 +7,16 @@ public sealed class RepositoryBookmark(string path) : ObservableObject
     private string? _displayName;
     private bool _hasNameConflict;
     private string _conflictHint = "";
+    private int? _pendingPushCount;
+    public int? PendingPushCount => _pendingPushCount;
+    public bool HasPendingPush => _pendingPushCount is > 0;
+    public string PendingPushHint => HasPendingPush ? $"有 {_pendingPushCount} 个本地提交待推送" : "";
+    public void UpdatePendingPushCount(int? count)
+    {
+        if (!Set(ref _pendingPushCount, count, nameof(PendingPushCount))) return;
+        Notify(nameof(HasPendingPush));
+        Notify(nameof(PendingPushHint));
+    }
     private string _path = Services.Repositories.RepositoryPaths.Actual(path);
     public string Path => _path;
     public bool RefreshPath()

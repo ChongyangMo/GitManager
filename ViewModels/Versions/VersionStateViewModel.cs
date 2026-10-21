@@ -63,6 +63,8 @@ public sealed partial class MainViewModel
 
     private void NotifyVersionState()
     {
+        if (_versions is not null && _versionRoot is { } versionRoot && Repository?.Path == versionRoot)
+            UpdateRepositoryPushIndicator(versionRoot, _versions.HasRemote ? _versions.Ahead : null);
         Notify(nameof(ActiveRemoteUrl)); Notify(nameof(RemoteAddresses)); Notify(nameof(HasRemoteAddresses));
         foreach (string name in new[] { nameof(RemoteSource), nameof(RemoteTitle), nameof(LocalVersionLabel), nameof(LocalVersionDetail), nameof(RemoteVersionHash), nameof(RemoteVersionDetail), nameof(IsMerging), nameof(CanResolveSelected), nameof(CanMergeRemote), nameof(CommitButtonLabel), nameof(FetchStateText), nameof(FetchError), nameof(SyncStateText) }) Notify(name);
     }
@@ -76,13 +78,13 @@ public sealed partial class MainViewModel
         NotifyVersionState(); Notify(nameof(VersionComparisonState));
     }
 
-    private async Task FetchRemoteCoreAsync(bool tolerateFailure)
+    private async Task FetchRemoteCoreAsync(bool tolerateFailure, bool createMissing = false)
     {
         if (_versions?.HasRemote != true) return;
         string key = FetchKey;
         try
         {
-            await Git.FetchVersionsAsync(Root, _versions.RemoteName);
+            await Git.FetchVersionsAsync(Root, _versions.RemoteName, _lifetimeCancellation.Token, createMissing);
             _fetchedAt[key] = DateTimeOffset.Now;
             _fetchErrors.Remove(key);
         }

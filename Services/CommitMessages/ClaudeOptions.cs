@@ -1,6 +1,6 @@
 namespace GitManager.Services.CommitMessages;
 
-// 本机已安装并登录 Claude Code 时优先用它总结，调用失败再改用千问。
+// 本机已安装并登录 Claude Code 时优先用它总结，调用失败再依次尝试 Codex、千问。
 public sealed class ClaudeOptions
 {
     public bool Enabled { get; set; } = true;

@@ -9,11 +9,14 @@ public sealed class AppSettings
     public List<string> Repositories { get; set; } = [];
     public string? LastRepository { get; set; }
     public string Theme { get; set; } = "System";
+    public GitHub.GitHubOptions GitHub { get; set; } = new();
+    public Dictionary<string, Layout.PaneLayoutState> WorkspaceLayout { get; set; } = new();
     public List<string> IgnoredRepositories { get; set; } = [];
     public Repositories.RepositoryDiscoveryOptions RepositoryDiscovery { get; set; } = new();
     public ServiceCloud.ServiceCloudOptions ServiceCloud { get; set; } = null!;
     public CommitMessages.QwenOptions Qwen { get; set; } = new();
     public CommitMessages.ClaudeOptions Claude { get; set; } = new();
+    public CommitMessages.CodexOptions Codex { get; set; } = new();
     public LuxAi.LuxAiOptions LuxAi { get; set; } = new();
 }
 
@@ -42,11 +45,14 @@ public sealed class SettingsStore
         string source = File.Exists(FilePath) ? FilePath : Path.Combine(AppContext.BaseDirectory, "appsettings.json");
         Value = File.Exists(source) ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(source)) ?? throw new InvalidDataException("配置文件内容为空。") : new();
         Value.Repositories ??= [];
+        Value.GitHub ??= new();
+        Value.WorkspaceLayout ??= new();
         Value.IgnoredRepositories ??= [];
         Value.RepositoryDiscovery ??= new();
         Value.RepositoryDiscovery.Roots ??= [];
         Value.Qwen ??= new();
         Value.Claude ??= new();
+        Value.Codex ??= new();
         Value.LuxAi ??= new();
         Value.Qwen.PublicGitHosts ??= [];
         if (Value.ServiceCloud is null)

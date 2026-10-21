@@ -54,25 +54,7 @@ public sealed class RepositoryCopyAnalysisService(GitRepositoryService git, Sett
             string text = await client.GenerateAsync(content, token, prompt);
             return new(text, "集团 AI", new(null, null, "集团接口未返回完整用量或费用，未作估算"));
         }
-        var claude = settings.Value.Claude;
-        if (claude.Enabled && ClaudeClient.FindExecutable() is { } executable)
-        {
-            try
-            {
-                if (await ClaudeClient.IsLoggedInAsync(executable, token))
-                {
-                    await new RepositorySummaryRouting(git, settings).EnsureAsync(roots, SummaryModelTarget.PublicModels, token);
-                    var reply = await ClaudeClient.GenerateAsync(claude, executable, content, token, systemPrompt: prompt);
-                    return new(reply.Message, "Claude", reply.Cost);
-                }
-            }
-            catch (Exception ex) when ((ex is InvalidOperationException or TimeoutException or System.ComponentModel.Win32Exception) && !token.IsCancellationRequested)
-            { AppLog.Write("Claude 仓库分析失败，改用千问", ex); }
-        }
-        var options = settings.Value.Qwen;
-        await new RepositorySummaryRouting(git, settings).EnsureAsync(roots, SummaryModelTarget.PublicModels, token);
-        string key = QwenCredentials.Read(options) ?? throw new InvalidOperationException("外网仓库没有可用的大模型，请登录 Claude 或在设置中填写千问 API Key。");
-        var qwen = await QwenClient.GenerateAsync(options, key, content, token, prompt);
-        return new(qwen.Message, "千问", qwen.Cost);
+        var reply = await new PublicModelSummary(git, settings).GenerateAsync(roots, content, token, prompt);
+        return new(reply.Message, reply.Source, reply.Cost);
     }
 }

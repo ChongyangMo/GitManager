@@ -108,10 +108,18 @@ public sealed partial class GitRepositoryService
         return new(localBranch, local, remoteName, remoteUrl, target, branches, remoteHistory, ahead, behind, common, merging, cloudUrl, remoteAddresses);
     }
 
-    public async Task FetchVersionsAsync(string root, string remote, CancellationToken cancellationToken = default)
+    public async Task FetchVersionsAsync(string root, string remote, CancellationToken cancellationToken = default, bool createMissing = false)
     {
         if (string.IsNullOrWhiteSpace(remote)) throw new InvalidOperationException("请先设置远程仓库。");
-        await Runner.RunAsync(root, ["fetch", "--prune", remote, "+refs/heads/*:refs/remotes/" + remote + "/*"], cancellationToken: cancellationToken);
+        string[] arguments = ["fetch", "--prune", remote, "+refs/heads/*:refs/remotes/" + remote + "/*"];
+        var result = await Runner.RunAsync(root, arguments, allowFailure: true, cancellationToken: cancellationToken);
+        if (result.ExitCode != 0)
+        {
+            string failure = string.IsNullOrWhiteSpace(result.Error) ? result.Output.Trim() : result.Error.Trim();
+            if (!createMissing || !await TryCreateMissingGitHubRepositoryAsync(root, remote, failure, cancellationToken))
+                throw new InvalidOperationException("Git 操作失败：" + failure);
+            await Runner.RunAsync(root, arguments, cancellationToken: cancellationToken);
+        }
         AppLog.Write("已获取远程版本记录");
     }
 }
