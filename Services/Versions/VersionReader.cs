@@ -20,6 +20,7 @@ public sealed partial class GitRepositoryService
         var metadataTask = Run(root, "rev-parse", "--absolute-git-dir");
         var remotesTask = Run(root, "remote");
         var referencesTask = Run(root, "for-each-ref", "--format=%(refname)%00%(symref)%00", "refs/remotes/");
+        var addressesTask = Runner.RunAsync(root, ["config", "--get-regexp", @"^remote\..*\.url$"], true);
         string localBranch;
         CommitInfo? local;
         bool attached;
@@ -95,7 +96,16 @@ public sealed partial class GitRepositoryService
             }
         }
         string cloudUrl = await ReadConfigAsync(root, "gitmanager.serviceCloudUrl");
-        return new(localBranch, local, remoteName, remoteUrl, target, branches, remoteHistory, ahead, behind, common, merging, cloudUrl);
+        var addresses = await addressesTask;
+        if (addresses.ExitCode is not (0 or 1)) throw new InvalidOperationException("读取远程地址失败：" + addresses.Error);
+        List<RemoteAddress> remoteAddresses = [];
+        foreach (string line in addresses.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            int space = line.IndexOf(' ');
+            if (space < "remote..url".Length) continue;
+            remoteAddresses.Add(new(line["remote.".Length..(space - ".url".Length)], line[(space + 1)..].Trim()));
+        }
+        return new(localBranch, local, remoteName, remoteUrl, target, branches, remoteHistory, ahead, behind, common, merging, cloudUrl, remoteAddresses);
     }
 
     public async Task FetchVersionsAsync(string root, string remote, CancellationToken cancellationToken = default)

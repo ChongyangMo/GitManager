@@ -53,7 +53,22 @@
                                     <TextBlock Text="{Binding Repository.Name}" FontSize="17" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                     <TextBlock Text="位置" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding Repository.Path}" Style="{StaticResource InfoValue}" />
                                     <TextBlock Text="当前分支" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding Branch}" Style="{StaticResource InfoValue}" />
-                                    <TextBlock Text="远程地址" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding RemoteDisplay}" Style="{StaticResource InfoValue}" />
+                                    <TextBlock Text="远程地址" Style="{StaticResource InfoLabel}" />
+                                    <ItemsControl x:Name="RemoteAddressList" ItemsSource="{Binding RemoteAddresses}" Visibility="{Binding HasRemoteAddresses, Converter={StaticResource BoolVisibility}}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border x:Name="RemoteRow" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Margin="0,8,0,0" Padding="0,8,0,0">
+                                                    <StackPanel><TextBlock Text="{Binding Name}" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,0,0,2" /><TextBlock Text="{Binding Url}" Style="{StaticResource InfoValue}" /></StackPanel>
+                                                </Border>
+                                                <DataTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}" Value="{x:Null}"><Setter TargetName="RemoteRow" Property="BorderThickness" Value="0" /><Setter TargetName="RemoteRow" Property="Margin" Value="0" /><Setter TargetName="RemoteRow" Property="Padding" Value="0" /></DataTrigger>
+                                                </DataTemplate.Triggers>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="未设置">
+                                        <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding HasRemoteAddresses}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                    </TextBlock>
                                     <TextBlock Text="最近提交" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding History[0].Subject, FallbackValue=暂无提交}" Style="{StaticResource InfoValue}" />
                                     <TextBlock Text="说明文件" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding Readme.FileName, FallbackValue=无}" Style="{StaticResource InfoValue}" />
                                     <StackPanel Orientation="Horizontal" Margin="0,22,0,0"><Button Content="打开文件夹" Style="{StaticResource WorkspaceButton}" Margin="0,0,8,0" Click="OpenRepositoryFolderClicked" /><Button Content="打开说明文件" Style="{StaticResource WorkspaceButton}" Click="OpenReadmeClicked" IsEnabled="{Binding HasReadme}" views:BusyFeedback.DeferDisabledLook="False" /></StackPanel>

@@ -63,7 +63,7 @@ public sealed partial class MainViewModel
 
     private void NotifyVersionState()
     {
-        Notify(nameof(ActiveRemoteUrl)); Notify(nameof(RemoteDisplay));
+        Notify(nameof(ActiveRemoteUrl)); Notify(nameof(RemoteAddresses)); Notify(nameof(HasRemoteAddresses));
         foreach (string name in new[] { nameof(RemoteSource), nameof(RemoteTitle), nameof(LocalVersionLabel), nameof(LocalVersionDetail), nameof(RemoteVersionHash), nameof(RemoteVersionDetail), nameof(IsMerging), nameof(CanResolveSelected), nameof(CanMergeRemote), nameof(CommitButtonLabel), nameof(FetchStateText), nameof(FetchError), nameof(SyncStateText) }) Notify(name);
     }
 

@@ -213,6 +213,8 @@ internal static partial class Program
                 await viewModel.ShowActiveTabAsync();
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 if (viewModel.Readme is null || viewModel.Comparison is not null) throw new InvalidOperationException("说明页未读取 README。");
+                var remoteNames = (await Runner.RunAsync(repository, ["remote"])).Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (!viewModel.RemoteAddresses.Select(remote => remote.Name).ToHashSet().SetEquals(remoteNames)) throw new InvalidOperationException("说明页未列出全部远程地址。");
                 SaveScreenshot(window, Path.ChangeExtension(screenshotPath, "readme.png"));
                 viewModel.ActiveTab = MainViewModel.ChangesTab;
                 await WaitForIdleAsync(viewModel, "切换到改动页");

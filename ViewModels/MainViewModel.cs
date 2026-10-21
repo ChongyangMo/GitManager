@@ -35,7 +35,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public RepositoryBookmark? Repository { get => _repository; private set { if (Set(ref _repository, value)) SetSummaryCost(null); Notify(nameof(HasRepository)); Notify(nameof(CanOperate)); } }
     public string Status { get => _status; private set => Set(ref _status, value); }
     public string Branch { get => _branch; set => Set(ref _branch, value); }
-    public string Remote { get => _remote; private set { if (Set(ref _remote, value)) Notify(nameof(RemoteDisplay)); } }
+    public string Remote { get => _remote; private set { if (Set(ref _remote, value)) { Notify(nameof(RemoteAddresses)); Notify(nameof(HasRemoteAddresses)); } } }
     public string UserName { get => _userName; private set => Set(ref _userName, value); }
     public string UserEmail { get => _userEmail; private set => Set(ref _userEmail, value); }
     public string CommitMessage { get => _commitMessage; set { if (Set(ref _commitMessage, value)) _commitMessageRevision++; } }
