@@ -1,4 +1,5 @@
 using GitManager.Models;
+using GitManager.Services.Repositories;
 
 namespace GitManager.ViewModels;
 
@@ -11,6 +12,7 @@ public sealed partial class MainViewModel
             0 => SelectedChange is null ? null : await Git.CompareWorkingAsync(Root, SelectedChange, _hasHead),
             1 => SelectedCommit is null || SelectedHistoryFile is null ? null : await Git.CompareHistoryAsync(Root, SelectedCommit, SelectedHistoryFile),
             2 => SelectedRemoteCommit is null || SelectedRemoteFile is null ? null : await Git.CompareHistoryAsync(Root, SelectedRemoteCommit, SelectedRemoteFile),
+            ReadmeTab => null,
             _ => await ReadVersionComparisonCoreAsync()
         };
     }
@@ -22,6 +24,7 @@ public sealed partial class MainViewModel
     {
         if (ActiveTab == 2) await LoadRemoteFilesCoreAsync();
         if (ActiveTab == 3) await LoadVersionFilesCoreAsync();
+        if (ActiveTab == ReadmeTab) Readme = await ReadmeReader.ReadAsync(Root);
         await LoadComparisonCoreAsync();
     });
     public Task ShowCommitAsync() => NavigateHistoryAsync(remote: false, loadFiles: true);

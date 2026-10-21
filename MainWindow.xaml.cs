@@ -19,8 +19,16 @@ public partial class MainWindow : Window
         ViewModel = viewModel;
         InitializeComponent();
         DataContext = viewModel;
+        FitToWorkArea();
         ThemeService.Attach(this);
         Closed += (_, _) => viewModel.Dispose();
+    }
+    // 小屏幕上默认尺寸可能超出可用区域，按工作区比例收缩。
+    private void FitToWorkArea()
+    {
+        var area = SystemParameters.WorkArea;
+        Width = Math.Max(Math.Min(Width, area.Width * 0.85), Math.Min(MinWidth, area.Width));
+        Height = Math.Max(Math.Min(Height, area.Height * 0.88), Math.Min(MinHeight, area.Height));
     }
     private string? ChooseFolder(string title)
     {
@@ -90,10 +98,9 @@ public partial class MainWindow : Window
     private async void FetchClicked(object sender, RoutedEventArgs e) => await ViewModel.SynchronizeAsync("fetch");
     private async void PullClicked(object sender, RoutedEventArgs e) => await ViewModel.SynchronizeAsync("pull");
     private async void PushClicked(object sender, RoutedEventArgs e) => await ViewModel.SynchronizeAsync("push");
-    private async void ThemeToggleClicked(object sender, RoutedEventArgs e) => await ViewModel.SetThemeAsync(ThemeService.IsDark ? "Light" : "Dark");
     private async void RemoteClicked(object sender, RoutedEventArgs e)
     {
-        var dialog = new FormWindow("远程仓库", new FormField("origin 地址", ViewModel.Remote)) { Owner = this };
+        var dialog = new FormWindow("远程仓库", new FormField((ViewModel.SelectedRemoteBranch?.RemoteName ?? "origin") + " 地址", ViewModel.ActiveRemoteUrl)) { Owner = this };
         if (dialog.ShowDialog() == true) await ViewModel.SaveRemoteAsync(dialog.Fields[0].Value);
     }
     private async void RestoreVersionClicked(object sender, RoutedEventArgs e) => await RestoreAsync(fileOnly: false);
@@ -118,16 +125,28 @@ public partial class MainWindow : Window
     private async void SettingsClicked(object sender, RoutedEventArgs e)
     {
         List<FormField> fields = [new("Git 程序", ViewModel.Settings.Value.GitExecutablePath, "file")];
-        if (ViewModel.HasRepository) { fields.Add(new("本仓库提交姓名", ViewModel.UserName)); fields.Add(new("本仓库提交邮箱", ViewModel.UserEmail)); }
+        if (ViewModel.HasRepository) { fields.Add(new("本仓库提交姓名", ViewModel.UserName)); fields.Add(new("本仓库提交邮箱", ViewModel.UserEmail, required: false)); }
         var dialog = new FormWindow("设置", fields.ToArray()) { Owner = this };
         dialog.ShowTheme(ViewModel.Settings.Value.Theme);
+        dialog.ShowAction("打开日志", OpenLogs);
+        dialog.ShowAction("千问总结", () => GitManager.Views.CommitMessages.QwenSettingsWindow.Open(dialog, ViewModel));
         if (dialog.ShowDialog() == true) await ViewModel.SaveSettingsAsync(fields[0].Value.Trim(), dialog.Theme, fields.Count > 1 ? fields[1].Value : "", fields.Count > 2 ? fields[2].Value : "");
     }
-    private void LogsClicked(object sender, RoutedEventArgs e)
+    private static void OpenLogs()
     {
         string directory = Path.Combine(SettingsStore.DataDirectory, "logs");
         Directory.CreateDirectory(directory);
         Process.Start(new ProcessStartInfo("explorer.exe", directory) { UseShellExecute = true });
+    }
+    private void OpenRepositoryFolderClicked(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.Repository is { } repository && Directory.Exists(repository.Path))
+            Process.Start(new ProcessStartInfo("explorer.exe", repository.Path) { UseShellExecute = true });
+    }
+    private void OpenReadmeClicked(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.Readme is { } readme && File.Exists(readme.Path))
+            Process.Start(new ProcessStartInfo(readme.Path) { UseShellExecute = true });
     }
     private async void WindowKeyDown(object sender, KeyEventArgs e)
     {

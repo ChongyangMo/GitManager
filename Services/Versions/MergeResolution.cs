@@ -42,7 +42,7 @@ public sealed partial class GitRepositoryService
     {
         await EnsureMergeAsync(root);
         if ((await ReadChangesAsync(root)).Any(file => file.IsConflict)) throw new InvalidOperationException("仍有未处理的冲突，请先逐个解决。");
-        await Runner.RunAsync(root, string.IsNullOrWhiteSpace(message) ? ["commit", "--no-edit"] : ["commit", "-m", message.Trim()]);
+        await RunWithCommitIdentityAsync(root, string.IsNullOrWhiteSpace(message) ? ["commit", "--no-edit"] : ["commit", "-m", message.Trim()]);
         AppLog.Write("合并提交已保存到本地");
     }
 

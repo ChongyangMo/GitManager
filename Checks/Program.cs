@@ -21,8 +21,14 @@ internal static partial class Program
     {
         try
         {
+            if (args.Length == 1 && args[0] == "--qwen") { RunQwenSummaryChecks(); return 0; }
+            if (args.Length > 2 && args[0] == "--qwen-live") { RunCommitSummaryChecks(args[1], args[2..], qwenLive: true); return 0; }
+            if (args.Length == 2 && args[0] == "--identity") { RunCommitIdentityChecksAsync(args[1]).GetAwaiter().GetResult(); return 0; }
+            if (args.Length is 3 or 4 && args[0] == "--servicecloud") { RunServiceCloudChecksAsync(args[1], args[2], args.Length == 4 ? args[3] : null).GetAwaiter().GetResult(); return 0; }
+            if (args.Length == 3 && args[0] == "--servicecloud-ui") { RenderServiceCloud(args[1], args[2]); return 0; }
             if (args.Length > 2 && args[0] == "--summary") { RunCommitSummaryChecks(args[1], args[2..]); return 0; }
             if (args.Length > 2 && args[0] == "--summary-cancel") { RunCommitSummaryChecks(args[1], args[2..], cancelOnly: true); return 0; }
+            if (args.Length > 2 && args[0] == "--auto-commit") { RunCommitSummaryChecks(args[1], args[2..], autoCommit: true); return 0; }
             if (args.Length == 2 && args[0] == "--history") { RunHistoryNavigationChecks(args[1]); return 0; }
             if (args.Length > 1 && args[0] == "--switching") { RunSwitchingChecks(args[1..]); return 0; }
             if (args.Length == 1 && args[0] == "--discovery") { RunDiscoveryChecksAsync().GetAwaiter().GetResult(); return 0; }
@@ -180,19 +186,23 @@ internal static partial class Program
                 if (viewModel.HistoryFiles.Count == 0 || viewModel.Comparison is null) throw new InvalidOperationException("历史界面未加载真实提交。");
                 SaveScreenshot(window, Path.ChangeExtension(screenshotPath, "history.png"));
                 await viewModel.SetThemeAsync("Dark");
-                if (!ThemeService.IsDark || viewModel.ThemeActionText != "白天模式" || new SettingsStore(store.FilePath).Value.Theme != "Dark") throw new InvalidOperationException("黑夜模式或配置持久化未生效。");
-                var toggle = (System.Windows.Controls.Button)window.FindName("ThemeToggleButton");
-                toggle.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
-                while (viewModel.IsBusy) await Task.Delay(20);
-                if (ThemeService.IsDark || viewModel.ThemeActionText != "黑夜模式") throw new InvalidOperationException("一键切换白天模式未生效。");
-                toggle.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
-                while (viewModel.IsBusy) await Task.Delay(20);
-                if (!ThemeService.IsDark) throw new InvalidOperationException("一键切换黑夜模式未生效。");
+                if (!ThemeService.IsDark || new SettingsStore(store.FilePath).Value.Theme != "Dark") throw new InvalidOperationException("黑夜模式或配置持久化未生效。");
+                await viewModel.SetThemeAsync("Light");
+                if (ThemeService.IsDark) throw new InvalidOperationException("切换白天模式未生效。");
+                await viewModel.SetThemeAsync("Dark");
+                if (!ThemeService.IsDark) throw new InvalidOperationException("切换黑夜模式未生效。");
+                viewModel.ActiveTab = MainViewModel.ReadmeTab;
+                await viewModel.ShowActiveTabAsync();
+                await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+                if (viewModel.Readme is null || viewModel.Comparison is not null) throw new InvalidOperationException("说明页未读取 README。");
+                SaveScreenshot(window, Path.ChangeExtension(screenshotPath, "readme.png"));
+                viewModel.ActiveTab = 0;
+                await viewModel.ShowActiveTabAsync();
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 SaveScreenshot(window, Path.ChangeExtension(screenshotPath, "dark.png"));
                 await VerifyBusyAppearanceAsync(window, viewModel, Path.ChangeExtension(screenshotPath, "busy.png"));
                 await VerifyVersionViewsAsync(window, viewModel, screenshotPath);
-                Console.WriteLine("黑夜模式、按钮切换和配置保存检查通过。");
+                Console.WriteLine("黑夜模式、说明页和配置保存检查通过。");
             }
             catch (Exception ex) { errors++; Console.Error.WriteLine("界面检查失败：" + ex); }
             finally { app.Shutdown(); }
@@ -206,7 +216,14 @@ internal static partial class Program
         window.UpdateLayout();
         var content = (FrameworkElement)window.Content;
         var image = new RenderTargetBitmap((int)content.ActualWidth, (int)content.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-        image.Render(content);
+        var drawing = new DrawingVisual();
+        using (var context = drawing.RenderOpen())
+        {
+            var bounds = new Rect(0, 0, content.ActualWidth, content.ActualHeight);
+            context.DrawRectangle(window.Background, null, bounds);
+            context.DrawRectangle(new VisualBrush(content), null, bounds);
+        }
+        image.Render(drawing);
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(screenshotPath))!);
         using (var stream = File.Create(screenshotPath)) encoder.Save(stream);

@@ -26,7 +26,11 @@ public sealed partial class MainViewModel
         AppLog.Write($"已自动加入 {additions.Length} 个本地仓库");
     }
 
-    public Task DiscoverRepositoriesAsync() => ExecuteAsync("正在识别本地仓库", DiscoverRepositoriesCoreAsync);
+    public Task DiscoverRepositoriesAsync() => ExecuteAsync("正在识别本地仓库", async () =>
+    {
+        await DiscoverRepositoriesCoreAsync();
+        await RefreshRepositoryNamesAsync();
+    });
 
     public Task DiscoverOnActivationAsync() => IsBusy || DateTimeOffset.UtcNow - _lastDiscovery < TimeSpan.FromMinutes(1)
         ? Task.CompletedTask : DiscoverRepositoriesAsync();

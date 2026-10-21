@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using GitManager.Models;
 
@@ -7,12 +8,49 @@ namespace GitManager.Services;
 
 public sealed class GitRunner(Func<string> executable, CancellationToken lifetime = default)
 {
+    // 进程初始化失败（STATUS_DLL_INIT_FAILED），常见于同时启动过多进程，此时 Git 尚未执行任何操作。
+    private const int DllInitFailed = unchecked((int)0xC0000142);
+    private const uint FailCriticalErrors = 0x0001, NoGpFaultErrorBox = 0x0002;
+    // 一次刷新会并发读取多项状态，每个 git 还会带起包装进程和控制台宿主，限制总数以免瞬间耗尽系统资源。
+    private static readonly SemaphoreSlim Slots = new(6);
+
+    static GitRunner()
+    {
+        // 子进程继承错误模式：启动失败只返回退出码，不再弹出系统错误对话框。
+        if (OperatingSystem.IsWindows()) SetErrorMode(GetErrorMode() | FailCriticalErrors | NoGpFaultErrorBox);
+    }
+
+    [DllImport("kernel32.dll")] private static extern uint SetErrorMode(uint mode);
+    [DllImport("kernel32.dll")] private static extern uint GetErrorMode();
+
     public async Task<GitResult> RunAsync(string? directory, IEnumerable<string> arguments, bool allowFailure = false, CancellationToken cancellationToken = default, bool strictUtf8 = false, string? standardInput = null, bool binaryOutput = false)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lifetime.ThrowIfCancellationRequested();
         string git = executable();
         if (!File.Exists(git)) throw new FileNotFoundException("未找到 Git，请在设置中选择 git.exe。", git);
+        string[] args = arguments.ToArray();
+        for (int attempt = 1; ; attempt++)
+        {
+            using var waiting = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lifetime);
+            await Slots.WaitAsync(waiting.Token).ConfigureAwait(false);
+            GitResult result;
+            try { result = await RunOnceAsync(git, directory, args, cancellationToken, strictUtf8, standardInput, binaryOutput).ConfigureAwait(false); }
+            finally { Slots.Release(); }
+            if (result.ExitCode == DllInitFailed && attempt < 3)
+            {
+                AppLog.Write($"Git 进程启动失败（0xC0000142），第 {attempt} 次重试");
+                await Task.Delay(300 * attempt, waiting.Token).ConfigureAwait(false);
+                continue;
+            }
+            if (result.ExitCode == DllInitFailed) throw new InvalidOperationException("Git 进程无法启动（0xC0000142），系统资源可能暂时不足，请稍后重试。");
+            if (result.ExitCode != 0 && !allowFailure) throw new InvalidOperationException("Git 操作失败：" + (string.IsNullOrWhiteSpace(result.Error) ? result.Output.Trim() : result.Error.Trim()));
+            return result;
+        }
+    }
+
+    private async Task<GitResult> RunOnceAsync(string git, string? directory, string[] arguments, CancellationToken cancellationToken, bool strictUtf8, string? standardInput, bool binaryOutput)
+    {
         var start = new ProcessStartInfo(git)
         {
             UseShellExecute = false, CreateNoWindow = true,
@@ -49,9 +87,7 @@ public sealed class GitRunner(Func<string> executable, CancellationToken lifetim
         {
             await process.WaitForExitAsync(timeout.Token).ConfigureAwait(false);
             await input.ConfigureAwait(false);
-            var result = new GitResult(process.ExitCode, await output.ConfigureAwait(false), AppLog.Clean(await error.ConfigureAwait(false)));
-            if (result.ExitCode != 0 && !allowFailure) throw new InvalidOperationException("Git 操作失败：" + (string.IsNullOrWhiteSpace(result.Error) ? result.Output.Trim() : result.Error.Trim()));
-            return result;
+            return new GitResult(process.ExitCode, await output.ConfigureAwait(false), AppLog.Clean(await error.ConfigureAwait(false)));
         }
         catch (OperationCanceledException)
         {

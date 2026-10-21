@@ -11,7 +11,7 @@ namespace GitManager.Checks;
 
 internal static partial class Program
 {
-    private static void RunCommitSummaryChecks(string repository, string[] paths, bool cancelOnly = false)
+    private static void RunCommitSummaryChecks(string repository, string[] paths, bool cancelOnly = false, bool autoCommit = false, bool qwenLive = false)
     {
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         foreach (string theme in new[] { "Light", "Controls", "Workspace", "VersionTemplates" })
@@ -21,6 +21,7 @@ internal static partial class Program
         {
             var store = new SettingsStore(Path.Combine(Path.GetTempPath(), "GitManagerChecks", Guid.NewGuid().ToString("N"), "settings.json"));
             store.Value.RepositoryDiscovery.Enabled = false;
+            store.Value.Qwen.Enabled = qwenLive;
             using var vm = new MainViewModel(store);
             var window = new MainWindow(vm) { ShowInTaskbar = false, ShowActivated = false, Left = -30000, Top = -30000, WindowStartupLocation = WindowStartupLocation.Manual };
             window.Show();
@@ -30,6 +31,26 @@ internal static partial class Program
                 foreach (var file in vm.Changes) file.Selected = paths.Contains(file.Path, StringComparer.Ordinal);
                 var selected = vm.Changes.Where(file => file.Selected).ToArray();
                 Check(selected.Length == paths.Length, "总结范围来自指定的真实改动");
+                if (qwenLive)
+                {
+                    string headBefore = (await Runner.RunAsync(repository, ["rev-parse", "HEAD"])).Output;
+                    string stagedBefore = (await Runner.RunAsync(repository, ["diff", "--cached", "--raw", "-z"])).Output;
+                    await vm.GenerateCommitMessageAsync();
+                    Check(vm.Status == "已生成提交说明（千问）" && !string.IsNullOrWhiteSpace(vm.CommitMessage), "真实千问接口已返回提交说明：" + vm.Status);
+                    string actual = vm.CommitMessage;
+                    await vm.GenerateCommitMessageAsync();
+                    Check(vm.Status == "已生成提交说明（本地缓存）" && vm.CommitMessage == actual, "第二次总结直接复用本地结果");
+                    Check((await Runner.RunAsync(repository, ["rev-parse", "HEAD"])).Output == headBefore
+                        && (await Runner.RunAsync(repository, ["diff", "--cached", "--raw", "-z"])).Output == stagedBefore,
+                        "真实总结没有修改仓库提交或暂存区");
+                    Console.WriteLine("千问实际返回：\n" + actual);
+                    return;
+                }
+                if (autoCommit)
+                {
+                    await CheckAutomaticCommitAsync(vm, window, repository);
+                    return;
+                }
                 var source = await new LocalCommitSummaryReader(vm.Git).ReadAsync(repository, selected);
                 Check(source.Files.Select(file => file.Path).ToHashSet(StringComparer.Ordinal).SetEquals(paths), "本地规则只接收勾选文件");
                 if (cancelOnly)
@@ -66,6 +87,40 @@ internal static partial class Program
         };
         app.Run();
         if (failure is not null) throw new InvalidOperationException("本地总结检查失败。", failure);
+    }
+
+    private static async Task CheckAutomaticCommitAsync(MainViewModel vm, MainWindow window, string repository)
+    {
+        foreach (var file in vm.Changes) file.Selected = false;
+        vm.Changes.First().Selected = true;
+        vm.CommitMessage = "提交前的旧说明";
+        var pendingSummary = vm.GenerateCommitMessageAsync();
+        await File.WriteAllTextAsync(Path.Combine(repository, "提交前新增.txt"), "页面加载后产生的真实改动\n");
+        var files = await vm.Git.ReadChangesAsync(repository);
+        string expected = LocalCommitSummary.Generate((await new LocalCommitSummaryReader(vm.Git).ReadAsync(repository, files)).Files);
+        int before = int.Parse((await Runner.RunAsync(repository, ["rev-list", "--count", "HEAD"])).Output.Trim());
+        var button = (Button)window.FindName("CommitButton");
+        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Check(vm.IsBusy, "点击提交立即锁定操作");
+        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await pendingSummary;
+        await WaitForCommitAsync();
+        Check((await vm.Git.ReadChangesAsync(repository)).Count == 0, "一次点击提交全部改动，包括未勾选及页面加载后新增的文件");
+        string message = (await Runner.RunAsync(repository, ["log", "-1", "--format=%B"])).Output.Trim();
+        Check(message.Replace("\r\n", "\n") == expected.Replace("\r\n", "\n"), "提交使用全部真实改动生成的说明，旧总结不会覆盖新说明");
+        Check(int.Parse((await Runner.RunAsync(repository, ["rev-list", "--count", "HEAD"])).Output.Trim()) == before + 1, "连续点击只产生一次提交");
+        Check(vm.CommitMessage.Length == 0 && vm.Status == "已保存到本地", "提交后清空说明并刷新改动列表");
+        vm.CommitMessage = "没有改动时保留草稿";
+        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await WaitForCommitAsync();
+        Check(vm.Status == "没有未提交改动" && vm.CommitMessage == "没有改动时保留草稿", "无改动时保留草稿且不创建提交");
+
+        async Task WaitForCommitAsync()
+        {
+            var deadline = DateTimeOffset.UtcNow.AddSeconds(15);
+            while (vm.IsBusy && DateTimeOffset.UtcNow < deadline) await Task.Delay(10);
+            Check(!vm.IsBusy, "提交操作按时结束");
+        }
     }
 
     private static async Task CheckLocalSummaryFactsAsync()

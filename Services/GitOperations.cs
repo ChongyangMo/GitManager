@@ -30,16 +30,16 @@ public sealed partial class GitRepositoryService
 
     public async Task SaveIdentityAsync(string root, string name, string email)
     {
-        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(email)) throw new InvalidOperationException("请填写提交姓名和邮箱。");
+        if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("请填写提交姓名。");
         await Run(root, "config", "--local", "user.name", name.Trim());
         await Run(root, "config", "--local", "user.email", email.Trim());
     }
 
-    public async Task SaveRemoteAsync(string root, string url)
+    public async Task SaveRemoteAsync(string root, string url, string remote = "origin")
     {
         ValidateRemote(url);
         var remotes = (await Run(root, "remote")).Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        await Runner.RunAsync(root, remotes.Contains("origin") ? ["remote", "set-url", "origin", url.Trim()] : ["remote", "add", "origin", url.Trim()]);
+        await Runner.RunAsync(root, remotes.Contains(remote) ? ["remote", "set-url", remote, url.Trim()] : ["remote", "add", remote, url.Trim()]);
         AppLog.Write("已更新仓库远程地址");
     }
 
@@ -71,7 +71,9 @@ public sealed partial class GitRepositoryService
         try
         {
             await File.WriteAllTextAsync(file, string.Join('\0', paths) + '\0', new System.Text.UTF8Encoding(false));
-            await Runner.RunAsync(root, command.Concat(["--pathspec-from-file=" + file, "--pathspec-file-nul"]));
+            string[] arguments = command.Concat(["--pathspec-from-file=" + file, "--pathspec-file-nul"]).ToArray();
+            if (arguments[0] == "commit") await RunWithCommitIdentityAsync(root, arguments);
+            else await Runner.RunAsync(root, arguments);
         }
         finally { if (File.Exists(file)) File.Delete(file); }
     }

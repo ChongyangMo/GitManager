@@ -2,9 +2,15 @@ using GitManager.ViewModels;
 
 namespace GitManager.Models;
 
-public sealed record RepositoryBookmark(string Path)
+public sealed class RepositoryBookmark(string path) : ObservableObject
 {
-    public string Name => System.IO.Path.GetFileName(Path.TrimEnd('\\', '/')) is { Length: > 0 } name ? name : Path;
+    private string? _displayName;
+    public string Path { get; } = path;
+    public string Name => _displayName ?? (System.IO.Path.GetFileName(Path.TrimEnd('\\', '/')) is { Length: > 0 } name ? name : Path);
+    public void UpdateDisplayName(string? name)
+    {
+        if (Set(ref _displayName, string.IsNullOrWhiteSpace(name) ? null : name)) Notify(nameof(Name));
+    }
 }
 
 public sealed class ChangedFile(string path, string? originalPath, char indexState, char worktreeState) : ObservableObject

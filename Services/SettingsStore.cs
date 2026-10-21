@@ -11,6 +11,8 @@ public sealed class AppSettings
     public string Theme { get; set; } = "System";
     public List<string> IgnoredRepositories { get; set; } = [];
     public Repositories.RepositoryDiscoveryOptions RepositoryDiscovery { get; set; } = new();
+    public ServiceCloud.ServiceCloudOptions ServiceCloud { get; set; } = null!;
+    public CommitMessages.QwenOptions Qwen { get; set; } = new();
 }
 
 public sealed class SettingsStore
@@ -28,6 +30,14 @@ public sealed class SettingsStore
         Value.IgnoredRepositories ??= [];
         Value.RepositoryDiscovery ??= new();
         Value.RepositoryDiscovery.Roots ??= [];
+        Value.Qwen ??= new();
+        if (Value.ServiceCloud is null)
+        {
+            string defaults = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+            Value.ServiceCloud = File.Exists(defaults)
+                ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(defaults))?.ServiceCloud ?? new()
+                : new();
+        }
     }
 
     public void Save()

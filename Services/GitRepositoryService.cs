@@ -28,11 +28,19 @@ public sealed partial class GitRepositoryService(GitRunner runner)
         return await OpenAsync(directory);
     }
 
-    public async Task<string> CloneAsync(string url, string destination)
+    public async Task<string> CloneAsync(string url, string destination, string? proxyUrl = null, string? credentialUsername = null)
     {
         ValidateRemote(url);
         if (Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any()) throw new InvalidOperationException("克隆目标必须是空目录。");
-        await Runner.RunAsync(null, ["clone", "--", url, destination]);
+        List<string> arguments = [];
+        if (proxyUrl is not null) { ServiceCloud.ServiceCloudClient.ParseProxy(proxyUrl); arguments.AddRange(["-c", "http.proxy=" + proxyUrl.Trim()]); }
+        if (credentialUsername is not null)
+        {
+            string authority = new Uri(url).GetLeftPart(UriPartial.Authority);
+            arguments.AddRange(["-c", "credential." + authority + ".username=" + credentialUsername, "-c", "credential.credentialStore=wincredman", "-c", "credential.helper=manager"]);
+        }
+        arguments.AddRange(["clone", "--", url, destination]);
+        await Runner.RunAsync(null, arguments);
         return await OpenAsync(destination);
     }
 
@@ -45,7 +53,7 @@ public sealed partial class GitRepositoryService(GitRunner runner)
         var changesTask = ReadChangesAsync(root);
         var remoteTask = ReadConfigAsync(root, "remote.origin.url");
         var nameTask = ReadConfigAsync(root, "user.name");
-        var emailTask = ReadConfigAsync(root, "user.email");
+        var emailTask = ReadCommitEmailAsync(root);
         await Task.WhenAll(branchTask, headTask, branchesTask, changesTask, remoteTask, nameTask, emailTask);
         var branch = await branchTask;
         var head = await headTask;

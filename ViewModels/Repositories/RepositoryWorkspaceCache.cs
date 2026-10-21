@@ -11,7 +11,7 @@ public sealed partial class MainViewModel
         if (!HasRepository || _versions is null || _snapshotRoot != Root || _workspaceLoading) return;
         var snapshot = new RepositorySnapshot(Branch, Branches.ToList(), Changes.ToList(), History.ToList(), Remote, UserName, UserEmail, _hasHead);
         var content = new WorkspaceContent(snapshot, _versions, CaptureWorkspaceSelection(), HistoryFiles.ToList(),
-            RemoteFiles.ToList(), VersionChoices.ToList(), VersionFiles.ToList(), Comparison, DiffRows);
+            RemoteFiles.ToList(), VersionChoices.ToList(), VersionFiles.ToList(), Comparison, DiffRows, Readme);
         StoreWorkspace(Root, new(content, CommitMessage, CheckedChangePaths()));
     }
 
@@ -34,6 +34,7 @@ public sealed partial class MainViewModel
         _snapshotRoot = _versionRoot = Root;
         _hasHead = snapshot.HasHead;
         Remote = snapshot.Remote;
+        Repository?.UpdateDisplayName(Services.Repositories.RepositoryDisplayName.FromRemote(snapshot.Remote));
         UserName = snapshot.UserName; UserEmail = snapshot.UserEmail;
         CommitMessage = view.Message;
         Replace(Branches, snapshot.Branches);
@@ -59,6 +60,7 @@ public sealed partial class MainViewModel
         _followHeads = selection.FollowHeads;
         Replace(VersionFiles, content.VersionFiles);
         SelectedVersionFile = VersionFiles.FirstOrDefault(item => item.Path == selection.VersionFile);
+        Readme = content.Readme;
         ActiveTab = selection.Tab;
         if (_comparison != content.Comparison)
         {
@@ -76,7 +78,7 @@ public sealed partial class MainViewModel
         Branch = Remote = UserName = UserEmail = CommitMessage = "";
         Changes.Clear(); History.Clear(); HistoryFiles.Clear(); Branches.Clear();
         SelectedChange = null; SelectedCommit = null; SelectedHistoryFile = null;
-        ClearVersions(); Comparison = null;
+        ClearVersions(); Comparison = null; Readme = null;
         ActiveTab = 0;
         Notify(nameof(ChangesTitle)); Notify(nameof(HistoryTitle));
     }

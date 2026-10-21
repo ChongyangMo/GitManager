@@ -94,7 +94,8 @@ public sealed partial class GitRepositoryService
                 }
             }
         }
-        return new(localBranch, local, remoteName, remoteUrl, target, branches, remoteHistory, ahead, behind, common, merging);
+        string cloudUrl = await ReadConfigAsync(root, "gitmanager.serviceCloudUrl");
+        return new(localBranch, local, remoteName, remoteUrl, target, branches, remoteHistory, ahead, behind, common, merging, cloudUrl);
     }
 
     public async Task FetchVersionsAsync(string root, string remote, CancellationToken cancellationToken = default)

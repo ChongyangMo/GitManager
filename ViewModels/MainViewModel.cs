@@ -33,7 +33,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public RepositoryBookmark? Repository { get => _repository; private set { Set(ref _repository, value); Notify(nameof(HasRepository)); Notify(nameof(CanOperate)); } }
     public string Status { get => _status; private set => Set(ref _status, value); }
     public string Branch { get => _branch; set => Set(ref _branch, value); }
-    public string Remote { get => _remote; private set => Set(ref _remote, value); }
+    public string Remote { get => _remote; private set { if (Set(ref _remote, value)) Notify(nameof(RemoteDisplay)); } }
     public string UserName { get => _userName; private set => Set(ref _userName, value); }
     public string UserEmail { get => _userEmail; private set => Set(ref _userEmail, value); }
     public string CommitMessage { get => _commitMessage; set { if (Set(ref _commitMessage, value)) _commitMessageRevision++; } }
@@ -53,13 +53,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public MainViewModel(SettingsStore settings)
     {
         Settings = settings;
-        ThemeService.Changed += ThemeChanged;
         Git = new(new GitRunner(() => Settings.Value.GitExecutablePath, _lifetimeCancellation.Token));
         foreach (string path in settings.Value.Repositories.Distinct(StringComparer.OrdinalIgnoreCase)) Repositories.Add(new(path));
     }
 
-    public string ThemeActionText => ThemeService.IsDark ? "白天模式" : "黑夜模式";
-    private void ThemeChanged() => Notify(nameof(ThemeActionText));
     public void Dispose()
     {
         if (_disposed) return;
@@ -70,7 +67,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _backgroundFetchCancellation?.Cancel();
         _lifetimeCancellation.Cancel();
         _lifetimeCancellation.Dispose();
-        ThemeService.Changed -= ThemeChanged;
     }
 
     public async Task ExecuteAsync(string message, Func<Task> action)
@@ -112,6 +108,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public Task InitializeAsync(string? repository) => ExecuteAsync("正在读取仓库", async () =>
     {
         await DiscoverRepositoriesCoreAsync();
+        await RefreshRepositoryNamesAsync();
         string? path = repository ?? Settings.Value.LastRepository ?? Repositories.FirstOrDefault()?.Path;
         if (path is not null) await OpenCoreAsync(path);
     });

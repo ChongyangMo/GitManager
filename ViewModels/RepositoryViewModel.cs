@@ -13,6 +13,7 @@ public sealed partial class MainViewModel
         string root = await Git.OpenAsync(path);
         var bookmark = Repositories.FirstOrDefault(item => string.Equals(item.Path, root, StringComparison.OrdinalIgnoreCase));
         if (bookmark is null) { bookmark = new(root); Repositories.Add(bookmark); }
+        await RefreshRepositoryNameAsync(bookmark);
         Repository = bookmark;
         Settings.Value.IgnoredRepositories.RemoveAll(path => string.Equals(path, root, StringComparison.OrdinalIgnoreCase));
         CommitMessage = string.Empty;
@@ -36,6 +37,7 @@ public sealed partial class MainViewModel
     public Task RefreshAsync() => ExecuteAsync("正在刷新", async () =>
     {
         await DiscoverRepositoriesCoreAsync();
+        await RefreshRepositoryNamesAsync();
         if (HasRepository) await RefreshCoreAsync();
         else if (Repositories.FirstOrDefault() is { } first) await OpenCoreAsync(first.Path);
     });
@@ -75,24 +77,11 @@ public sealed partial class MainViewModel
         finally { await RefreshCoreAsync(); }
     });
 
-    public Task CommitAsync()
-    {
-        CancelCommitSummary();
-        return ExecuteAsync("正在保存本地版本", async () =>
-        {
-            if (IsMerging) await Git.FinishMergeAsync(Root, CommitMessage);
-            else await Git.CommitAsync(Root, Changes.Where(item => item.Selected).ToArray(), CommitMessage);
-            CommitMessage = "";
-            await RefreshCoreAsync();
-            Status = "已保存到本地";
-        });
-    }
-
     public Task SynchronizeAsync(string operation) => RunVersionSyncAsync(operation);
 
     public Task SaveRemoteAsync(string url) => ExecuteAsync("正在保存远程地址", async () =>
     {
-        await Git.SaveRemoteAsync(Root, url);
+        await Git.SaveRemoteAsync(Root, url, _versions?.RemoteName is { Length: > 0 } name ? name : "origin");
         await RefreshCoreAsync();
         await FetchRemoteCoreAsync(tolerateFailure: true);
         await RefreshVersionsCoreAsync();

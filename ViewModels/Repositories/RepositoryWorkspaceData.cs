@@ -1,4 +1,5 @@
 using GitManager.Models;
+using GitManager.Services.Repositories;
 
 namespace GitManager.ViewModels;
 
@@ -13,7 +14,7 @@ public sealed partial class MainViewModel
     private sealed record WorkspaceContent(
         RepositorySnapshot Snapshot, VersionSnapshot Versions, WorkspaceSelection Selection,
         List<HistoryFile> HistoryFiles, List<HistoryFile> RemoteFiles, List<VersionChoice> Choices,
-        List<HistoryFile> VersionFiles, FileComparison? Comparison, List<DiffRow> Rows);
+        List<HistoryFile> VersionFiles, FileComparison? Comparison, List<DiffRow> Rows, ReadmeDocument? Readme);
 
     private sealed record WorkspaceView(WorkspaceContent Content, string Message, HashSet<string> CheckedPaths);
 

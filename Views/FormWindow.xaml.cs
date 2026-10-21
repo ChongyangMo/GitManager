@@ -4,13 +4,15 @@ using Microsoft.Win32;
 
 namespace GitManager.Views;
 
-public sealed class FormField(string label, string value = "", string picker = "") : GitManager.ViewModels.ObservableObject
+public sealed class FormField(string label, string value = "", string picker = "", bool required = true, bool secret = false) : GitManager.ViewModels.ObservableObject
 {
     private string _value = value;
     public string Label { get; } = label;
     public string Value { get => _value; set => Set(ref _value, value); }
     public string Picker { get; } = picker;
     public bool HasPicker => Picker.Length > 0;
+    public bool Required { get; } = required;
+    public bool IsSecret { get; } = secret;
 }
 public sealed record ThemeChoice(string Label, string Value);
 
@@ -30,9 +32,21 @@ public partial class FormWindow : Window
         Loaded += (_, _) => MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.First));
     }
     public void ShowTheme(string theme) { ThemePanel.Visibility = Visibility.Visible; ThemeBox.SelectedValue = theme; }
+    public bool OptionValue => OptionBox.IsChecked == true;
+    public void ShowOption(string label, bool value) { OptionBox.Content = label; OptionBox.IsChecked = value; OptionBox.Visibility = Visibility.Visible; }
+    public void ShowAction(string label, Action action)
+    {
+        var button = new Button { Content = label, Style = (Style)FindResource("QuietButton") };
+        button.Click += (_, _) => action();
+        ActionPanel.Children.Add(button);
+    }
+    private void SecretChanged(object sender, RoutedEventArgs e)
+    {
+        if (sender is PasswordBox { DataContext: FormField field } password) field.Value = password.Password;
+    }
     private void SaveClicked(object sender, RoutedEventArgs e)
     {
-        string? error = Fields.FirstOrDefault(field => string.IsNullOrWhiteSpace(field.Value)) is { } missing ? "请填写" + missing.Label + "。" : Validate?.Invoke();
+        string? error = Fields.FirstOrDefault(field => field.Required && string.IsNullOrWhiteSpace(field.Value)) is { } missing ? "请填写" + missing.Label + "。" : Validate?.Invoke();
         if (error is not null) { ErrorText.Text = error; return; }
         DialogResult = true;
     }

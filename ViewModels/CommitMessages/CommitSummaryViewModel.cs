@@ -41,25 +41,22 @@ public sealed partial class MainViewModel
         Status = "正在总结勾选改动";
         try
         {
-            var reader = new LocalCommitSummaryReader(Git);
-            var source = await reader.ReadAsync(root, selected, cancellation.Token);
-            string message = LocalCommitSummary.Generate(source.Files);
-            var latest = await reader.ReadAsync(root, selected, cancellation.Token);
+            var result = await new CommitMessageGenerator(Git, Settings).GenerateAsync(root, selected, cancellation.Token);
             if (_disposed || generation != _commitSummaryGeneration || Repository?.Path != root) return;
             if (_commitMessageRevision != revision)
             {
                 Status = "提交说明已手动修改，保留当前内容";
                 return;
             }
-            if (!CheckedChangePaths().SetEquals(selected.Select(file => file.Path)) || source.Fingerprint != latest.Fingerprint)
+            if (!CheckedChangePaths().SetEquals(selected.Select(file => file.Path)))
             {
                 Status = "勾选范围或文件内容已变化，请重新总结";
                 return;
             }
-            CommitMessage = message;
+            CommitMessage = result.Message;
             CacheCurrentWorkspace();
-            Status = "已生成提交说明";
-            AppLog.Write($"已通过本地规则总结 {selected.Length} 个勾选文件");
+            Status = $"已生成提交说明（{result.Source}）";
+            AppLog.Write($"已通过{result.Source}总结 {selected.Length} 个勾选文件");
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {

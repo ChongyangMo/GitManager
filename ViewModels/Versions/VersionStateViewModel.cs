@@ -20,6 +20,7 @@ public sealed partial class MainViewModel
     public CommitInfo? SelectedRemoteCommit { get => _selectedRemoteCommit; set => Set(ref _selectedRemoteCommit, value); }
     public HistoryFile? SelectedRemoteFile { get => _selectedRemoteFile; set => Set(ref _selectedRemoteFile, value); }
     public string RemoteSource => _versions?.SourceLabel ?? "远程";
+    public string ActiveRemoteUrl => _versions?.RemoteUrl ?? Remote;
     public string RemoteTitle => $"{RemoteSource} {RemoteHistory.Count}";
     public string LocalVersionLabel => _versions?.LocalHead is { } head ? $"本地 {_versions.LocalBranch} · {head.ShortHash}" : "本地尚无提交";
     public string LocalVersionDetail => _versions?.LocalHead?.Subject ?? "";
@@ -62,6 +63,7 @@ public sealed partial class MainViewModel
 
     private void NotifyVersionState()
     {
+        Notify(nameof(ActiveRemoteUrl)); Notify(nameof(RemoteDisplay));
         foreach (string name in new[] { nameof(RemoteSource), nameof(RemoteTitle), nameof(LocalVersionLabel), nameof(LocalVersionDetail), nameof(RemoteVersionHash), nameof(RemoteVersionDetail), nameof(IsMerging), nameof(CanResolveSelected), nameof(CanMergeRemote), nameof(CommitButtonLabel), nameof(FetchStateText), nameof(FetchError), nameof(SyncStateText) }) Notify(name);
     }
 
