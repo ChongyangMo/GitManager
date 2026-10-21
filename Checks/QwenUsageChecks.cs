@@ -25,12 +25,19 @@ internal static partial class Program
                 string logs = Path.Combine(SettingsStore.DataDirectory, "logs");
                 var first = QwenUsageStore.Default.Read(logs);
                 Check(first.Entries.Count > 0 && first.UnreadableCount == 0, "已有真实调用日志导入用量记录");
-                var second = new QwenUsageStore(QwenUsageStore.Default.DirectoryPath).Read(logs);
+                var second = new QwenUsageStore(QwenUsageStore.Default.DirectoryPath, SettingsStore.PackagedDataDirectories()).Read(logs);
                 Check(first.Entries.Select(entry => entry.Id).SequenceEqual(second.Entries.Select(entry => entry.Id)), "重复导入和重新读取不增加记录");
                 var actual = first.Entries.First();
                 var isolated = new QwenUsageStore(Path.Combine(Path.GetTempPath(), "GitManagerUsageChecks", Guid.NewGuid().ToString("N")));
                 isolated.Save(actual); isolated.Save(actual);
                 Check(isolated.Read().Entries.Count == 1, "同一次调用的重复保存保持唯一");
+                string packaged = Path.Combine(Path.GetTempPath(), "GitManagerUsageChecks", Guid.NewGuid().ToString("N"));
+                var other = new QwenUsageStore(Path.Combine(packaged, "qwen-usage"));
+                other.Save(actual);
+                other.Save(new QwenUsageEntry { Id = Guid.NewGuid().ToString("N"), Time = actual.Time.AddMinutes(-1), Model = actual.Model,
+                    Result = "成功", InputTokens = 10, CachedTokens = 0, OutputTokens = 1, Cost = new(0m, 0m, "检查记录") });
+                var merged = new QwenUsageStore(isolated.DirectoryPath, [packaged]).Read();
+                Check(merged.Entries.Count == 2 && merged.UnreadableCount == 0, "同时读取打包启动目录的记录，同一调用只计一次");
                 Check(!JsonSerializer.Serialize(first.Entries).Contains("ApiKey", StringComparison.OrdinalIgnoreCase), "记录不包含密钥字段");
                 var window = new QwenUsageWindow(options) { ShowInTaskbar = false, ShowActivated = false,
                     Left = -30000, Top = -30000, WindowStartupLocation = WindowStartupLocation.Manual };

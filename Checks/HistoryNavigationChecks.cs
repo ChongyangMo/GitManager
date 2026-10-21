@@ -44,6 +44,7 @@ internal static partial class Program
                     {
                         var timer = Stopwatch.StartNew();
                         list.SelectedItem = commit;
+                        Check(vm.HistoryFiles.Count > 0 && vm.Comparison is not null, "切换提交时读取完成前保留上一版本内容，不先清空");
                         await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
                         var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
                         while (vm.IsHistoryLoading && DateTimeOffset.UtcNow < deadline) await Task.Delay(1);

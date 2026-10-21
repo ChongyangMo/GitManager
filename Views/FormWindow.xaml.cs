@@ -31,6 +31,7 @@ public partial class FormWindow : Window
         DataContext = this;
         Loaded += (_, _) => MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.First));
     }
+    public void ShowNote(string title, string text) { NoteTitle.Text = title; NoteText.Text = text; NotePanel.Visibility = Visibility.Visible; }
     public void ShowTheme(string theme) { ThemePanel.Visibility = Visibility.Visible; ThemeBox.SelectedValue = theme; }
     public bool OptionValue => OptionBox.IsChecked == true;
     public void ShowOption(string label, bool value) { OptionBox.Content = label; OptionBox.IsChecked = value; OptionBox.Visibility = Visibility.Visible; }

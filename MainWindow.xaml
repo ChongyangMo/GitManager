@@ -1,5 +1,5 @@
 <Window x:Class="GitManager.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:views="clr-namespace:GitManager.Views" xmlns:versions="clr-namespace:GitManager.Views.Versions" Title="GitManager" Width="1200" Height="760" MinWidth="980" MinHeight="620" WindowStartupLocation="CenterScreen" Style="{StaticResource WorkspaceWindow}" AllowDrop="True" Drop="RepositoryDropped" KeyDown="WindowKeyDown">
-    <Grid>
+    <Grid views:BusyFeedback.DeferDisabledLook="{Binding IsBusyFeedbackDeferred}">
         <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="32" /></Grid.RowDefinitions>
         <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition Width="214" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
@@ -11,13 +11,26 @@
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Bottom" Margin="12,12,12,16"><Button Content="设置" Style="{StaticResource QuietButton}" HorizontalAlignment="Stretch" Click="SettingsClicked" /></StackPanel>
                     <ListBox x:Name="RepositoryList" ItemsSource="{Binding Repositories}" SelectedItem="{Binding Repository, Mode=OneWay}" Style="{StaticResource WorkspaceList}" SelectionChanged="RepositoryChanged">
-                        <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}" /></DataTemplate></ListBox.ItemTemplate>
-                        <ListBox.ContextMenu><ContextMenu><MenuItem Header="移除记录" Click="RemoveRepositoryClicked" /></ContextMenu></ListBox.ContextMenu>
+                        <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem" BasedOn="{StaticResource WorkspaceRow}">
+                            <Setter Property="ContextMenu"><Setter.Value><ContextMenu/></Setter.Value></Setter>
+                            <EventSetter Event="ContextMenuOpening" Handler="RepositoryContextMenuOpening"/>
+                        </Style></ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate><DataTemplate>
+                            <DockPanel ToolTip="{Binding ConflictHint}">
+                                <Button x:Name="ConflictButton" DockPanel.Dock="Right" Content="同名" Tag="{Binding}" Visibility="Collapsed"
+                                        Style="{StaticResource QuietButton}" Foreground="{DynamicResource WarningBrush}" MinWidth="34" MinHeight="24" Padding="4,0"
+                                        Margin="5,0,0,0" Click="CompareRepositoryCopiesClicked" ToolTip="比较同名仓库"/>
+                                <TextBlock x:Name="RepositoryName" Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                            </DockPanel>
+                            <DataTemplate.Triggers><DataTrigger Binding="{Binding HasNameConflict}" Value="True">
+                                <Setter TargetName="RepositoryName" Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                                <Setter TargetName="ConflictButton" Property="Visibility" Value="Visible"/>
+                            </DataTrigger></DataTemplate.Triggers>
+                        </DataTemplate></ListBox.ItemTemplate>
                     </ListBox>
                 </DockPanel>
             </Border>
             <Grid Grid.Column="1">
-                <Grid.Style><Style TargetType="Grid"><Style.Triggers><DataTrigger Binding="{Binding IsWorkspaceLoading}" Value="True"><Setter Property="Visibility" Value="Hidden" /></DataTrigger></Style.Triggers></Style></Grid.Style>
                 <Grid.RowDefinitions><RowDefinition Height="64" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                 <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Background="{DynamicResource CardBrush}">
                     <DockPanel Margin="18,0" IsEnabled="{Binding CanOperate}">
@@ -25,8 +38,9 @@
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><ComboBox x:Name="BranchBox" ItemsSource="{Binding Branches}" SelectedItem="{Binding Branch}" Width="160" MinHeight="32" Margin="0,0,8,0" SelectionChanged="BranchChanged" ToolTip="当前分支" /><Button Content="新分支" Style="{StaticResource QuietButton}" Click="NewBranchClicked" Margin="0,0,6,0" /><Button Content="刷新" Style="{StaticResource QuietButton}" Click="RefreshClicked" ToolTip="F5" /><Button Content="恢复点" Style="{StaticResource QuietButton}" Click="RecoveryClicked" /></StackPanel>
                     </DockPanel>
                 </Border>
-                <versions:VersionStatusBar Grid.Row="1" />
+                <versions:VersionStatusBar Grid.Row="1"><versions:VersionStatusBar.Style><Style TargetType="versions:VersionStatusBar"><Style.Triggers><DataTrigger Binding="{Binding IsWorkspaceLoading}" Value="True"><Setter Property="Visibility" Value="Hidden" /></DataTrigger></Style.Triggers></Style></versions:VersionStatusBar.Style></versions:VersionStatusBar>
                 <Grid Grid.Row="2" IsEnabled="{Binding CanOperate}">
+                    <Grid.Style><Style TargetType="Grid"><Style.Triggers><DataTrigger Binding="{Binding IsWorkspaceLoading}" Value="True"><Setter Property="Visibility" Value="Hidden" /></DataTrigger></Style.Triggers></Style></Grid.Style>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="360" MinWidth="285" /><ColumnDefinition Width="5" /><ColumnDefinition Width="*" MinWidth="360" /></Grid.ColumnDefinitions>
                     <TabControl x:Name="WorkspaceTabs" SelectedIndex="{Binding ActiveTab}" SelectionChanged="TabChanged">
                         <TabItem Header="{Binding ChangesTitle}">
@@ -43,7 +57,7 @@
                                 <Grid.RowDefinitions><RowDefinition Height="3*" /><RowDefinition Height="5" /><RowDefinition Height="2*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                                 <ListBox x:Name="HistoryList" ItemsSource="{Binding History}" SelectedItem="{Binding SelectedCommit}" Style="{StaticResource WorkspaceList}" SelectionChanged="CommitSelected"><ListBox.ItemTemplate><DataTemplate><StackPanel ToolTip="{Binding Subject}"><TextBlock Text="{Binding Subject}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" /><DockPanel Margin="0,7,0,0"><TextBlock DockPanel.Dock="Right" Text="{Binding DisplayDate}" Foreground="{DynamicResource MutedBrush}" FontSize="11" /><TextBlock TextTrimming="CharacterEllipsis" Foreground="{DynamicResource MutedBrush}" FontSize="11"><Run Text="{Binding ShortHash}" /><Run Text="  " /><Run Text="{Binding Author}" /></TextBlock></DockPanel></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
                                 <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" Background="{DynamicResource BorderBrush}" />
-                                <ListBox x:Name="HistoryFilesList" Grid.Row="2" ItemsSource="{Binding HistoryFiles}" SelectedItem="{Binding SelectedHistoryFile}" Style="{StaticResource WorkspaceList}" SelectionChanged="HistoryFileSelected"><ListBox.ItemTemplate><DataTemplate><DockPanel ToolTip="{Binding Path}"><TextBlock DockPanel.Dock="Right" Text="{Binding State}" Foreground="{DynamicResource MutedBrush}" Margin="8,0,0,0" /><TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" /></DockPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
+                                <ListBox x:Name="HistoryFilesList" Grid.Row="2" ItemsSource="{Binding HistoryFiles}" SelectedItem="{Binding SelectedHistoryFile}" SelectionChanged="HistoryFileSelected"><ListBox.Style><Style TargetType="ListBox" BasedOn="{StaticResource WorkspaceList}"><Style.Triggers><DataTrigger Binding="{Binding IsHistoryLoading}" Value="True"><DataTrigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="0.55" BeginTime="0:0:0.25" Duration="0:0:0.12" /></Storyboard></BeginStoryboard></DataTrigger.EnterActions><DataTrigger.ExitActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.08" /></Storyboard></BeginStoryboard></DataTrigger.ExitActions></DataTrigger></Style.Triggers></Style></ListBox.Style><ListBox.ItemTemplate><DataTemplate><DockPanel ToolTip="{Binding Path}"><TextBlock DockPanel.Dock="Right" Text="{Binding State}" Foreground="{DynamicResource MutedBrush}" Margin="8,0,0,0" /><TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" /></DockPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
                                 <Border Grid.Row="3" Padding="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"><StackPanel Orientation="Horizontal"><Button Content="恢复此文件" Style="{StaticResource WorkspaceButton}" Margin="0,0,8,0" Click="RestoreFileClicked" /><Button Content="恢复此版本" Style="{StaticResource WorkspaceButton}" Click="RestoreVersionClicked" /></StackPanel></Border>
                             </Grid>
                         </TabItem>
@@ -62,18 +76,19 @@
                                     <TextBlock Text="远程地址" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding RemoteDisplay}" Style="{StaticResource InfoValue}" />
                                     <TextBlock Text="最近提交" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding History[0].Subject, FallbackValue=暂无提交}" Style="{StaticResource InfoValue}" />
                                     <TextBlock Text="说明文件" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding Readme.FileName, FallbackValue=无}" Style="{StaticResource InfoValue}" />
-                                    <StackPanel Orientation="Horizontal" Margin="0,22,0,0"><Button Content="打开文件夹" Style="{StaticResource WorkspaceButton}" Margin="0,0,8,0" Click="OpenRepositoryFolderClicked" /><Button Content="打开说明文件" Style="{StaticResource WorkspaceButton}" Click="OpenReadmeClicked" IsEnabled="{Binding HasReadme}" /></StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,22,0,0"><Button Content="打开文件夹" Style="{StaticResource WorkspaceButton}" Margin="0,0,8,0" Click="OpenRepositoryFolderClicked" /><Button Content="打开说明文件" Style="{StaticResource WorkspaceButton}" Click="OpenReadmeClicked" IsEnabled="{Binding HasReadme}" views:BusyFeedback.DeferDisabledLook="False" /></StackPanel>
                                 </StackPanel>
                             </ScrollViewer>
                         </TabItem>
                     </TabControl>
                     <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="{DynamicResource BorderBrush}" />
-                    <views:DiffViewer Grid.Column="2" Rows="{Binding DiffRows}" Comparison="{Binding Comparison}"><views:DiffViewer.Style><Style TargetType="views:DiffViewer"><Style.Triggers><DataTrigger Binding="{Binding ActiveTab}" Value="4"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></views:DiffViewer.Style></views:DiffViewer>
+                    <views:DiffViewer Grid.Column="2" Rows="{Binding DiffRows}" Comparison="{Binding Comparison}"><views:DiffViewer.Style><Style TargetType="views:DiffViewer"><Style.Triggers><DataTrigger Binding="{Binding IsHistoryLoading}" Value="True"><DataTrigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="0.55" BeginTime="0:0:0.25" Duration="0:0:0.12" /></Storyboard></BeginStoryboard></DataTrigger.EnterActions><DataTrigger.ExitActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.08" /></Storyboard></BeginStoryboard></DataTrigger.ExitActions></DataTrigger><DataTrigger Binding="{Binding ActiveTab}" Value="4"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></views:DiffViewer.Style></views:DiffViewer>
                     <views:ReadmeView Grid.Column="2" Document="{Binding Readme}"><views:ReadmeView.Style><Style TargetType="views:ReadmeView"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding ActiveTab}" Value="4"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></views:ReadmeView.Style></views:ReadmeView>
                 </Grid>
+                <TextBlock Grid.Row="1" Grid.RowSpan="2" Text="{Binding Status}" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="480" IsHitTestVisible="False" Visibility="{Binding IsWorkspaceLoadingHintVisible, Converter={StaticResource BoolVisibility}}" />
                 <TextBlock Grid.Row="2" Text="添加仓库" FontSize="20" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding HasRepository}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
             </Grid>
         </Grid>
-        <Border Grid.Row="1" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"><DockPanel Margin="14,0"><TextBlock DockPanel.Dock="Right" Text="{Binding SummaryCostLabel}" ToolTip="{Binding SummaryCostDetail}" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="12,0,0,0" /><ProgressBar DockPanel.Dock="Left" Width="70" Height="3" IsIndeterminate="True" Margin="0,0,10,0" Visibility="{Binding IsBusy, Converter={StaticResource BoolVisibility}}" /><TextBlock Text="{Binding Status}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Status}" Foreground="{DynamicResource MutedBrush}" /></DockPanel></Border>
+        <Border Grid.Row="1" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"><DockPanel Margin="14,0"><TextBlock DockPanel.Dock="Right" Text="{Binding SummaryCostLabel}" ToolTip="{Binding SummaryCostDetail}" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="12,0,0,0" /><ProgressBar DockPanel.Dock="Left" Width="70" Height="3" IsIndeterminate="True" Margin="0,0,10,0" Visibility="{Binding IsBusyProgressVisible, Converter={StaticResource BoolVisibility}}" /><TextBlock Text="{Binding Status}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Status}" Foreground="{DynamicResource MutedBrush}" /></DockPanel></Border>
     </Grid>
 </Window>

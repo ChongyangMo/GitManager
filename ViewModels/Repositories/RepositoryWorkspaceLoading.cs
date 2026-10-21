@@ -17,7 +17,7 @@ public sealed partial class MainViewModel
     private void SetWorkspaceLoading(bool value)
     {
         _workspaceLoading = value;
-        Notify(nameof(IsWorkspaceLoading)); Notify(nameof(CanOperate));
+        Notify(nameof(IsWorkspaceLoading)); Notify(nameof(CanOperate)); UpdateBusyFeedback();
     }
 
     public Task OpenRepositoryAsync(string path)
@@ -27,6 +27,7 @@ public sealed partial class MainViewModel
         InvalidateHistoryNavigation();
         var bookmark = Repositories.FirstOrDefault(item => string.Equals(item.Path, Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase));
         if (bookmark is null) return ExecuteAsync("正在打开仓库", () => OpenCoreAsync(path));
+        bookmark.RefreshPath();
         CacheCurrentWorkspace();
         _workspaceGeneration++;
         var timer = System.Diagnostics.Stopwatch.StartNew();

@@ -25,7 +25,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private FileComparison? _comparison;
     private List<DiffRow> _diffRows = [];
     private int _activeTab;
-    public bool IsBusy { get => _busy; private set { Set(ref _busy, value); Notify(nameof(IsIdle)); Notify(nameof(CanOperate)); } }
+    public bool IsBusy { get => _busy; private set { Set(ref _busy, value); Notify(nameof(IsIdle)); Notify(nameof(CanOperate)); UpdateBusyFeedback(); } }
     public bool IsIdle => !IsBusy;
     public bool HasRepository => Repository is not null;
     public bool CanOperate => HasRepository && IsIdle && !_workspaceLoading;
@@ -54,6 +54,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         Settings = settings;
         Git = new(new GitRunner(() => Settings.Value.GitExecutablePath, _lifetimeCancellation.Token));
+        Repositories.CollectionChanged += RepositoryBookmarksChanged;
         foreach (string path in settings.Value.Repositories.Distinct(StringComparer.OrdinalIgnoreCase)) Repositories.Add(new(path));
     }
 
@@ -65,6 +66,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         InvalidateHistoryNavigation();
         _workspaceGeneration++;
         _backgroundFetchCancellation?.Cancel();
+        _busyFeedbackTimer?.Stop();
         _lifetimeCancellation.Cancel();
         _lifetimeCancellation.Dispose();
     }

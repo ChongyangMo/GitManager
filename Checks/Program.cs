@@ -21,8 +21,11 @@ internal static partial class Program
     {
         try
         {
+            if (args.Length == 1 && args[0] == "--repository-paths") { RunRepositoryPathChecksAsync().GetAwaiter().GetResult(); return 0; }
+            if (args.Length == 1 && args[0] == "--repository-copies") { RunRepositoryCopiesChecks(); return 0; }
             if (args.Length == 1 && args[0] == "--qwen-usage") { RunQwenUsageChecks(); return 0; }
             if (args.Length == 1 && args[0] == "--qwen-cost") { RunQwenCostChecks(); return 0; }
+            if (args.Length == 1 && args[0] == "--claude") { RunClaudeChecksAsync().GetAwaiter().GetResult(); return 0; }
             if (args.Length > 0 && args[0] == "--model-policy") { RunModelPolicyChecksAsync(args[1..]).GetAwaiter().GetResult(); return 0; }
             if (args.Length == 1 && args[0] == "--qwen") { RunQwenSummaryChecks(); return 0; }
             if (args.Length > 2 && args[0] == "--qwen-live") { RunCommitSummaryChecks(args[1], args[2..], qwenLive: true); return 0; }
@@ -204,6 +207,7 @@ internal static partial class Program
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 SaveScreenshot(window, Path.ChangeExtension(screenshotPath, "dark.png"));
                 await VerifyBusyAppearanceAsync(window, viewModel, Path.ChangeExtension(screenshotPath, "busy.png"));
+                await VerifyBusyFeedbackAsync(window, viewModel);
                 await VerifyVersionViewsAsync(window, viewModel, screenshotPath);
                 Console.WriteLine("黑夜模式、说明页和配置保存检查通过。");
             }

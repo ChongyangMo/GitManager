@@ -129,7 +129,7 @@ public partial class MainWindow : Window
         var dialog = new FormWindow("设置", fields.ToArray()) { Owner = this };
         dialog.ShowTheme(ViewModel.Settings.Value.Theme);
         dialog.ShowAction("打开日志", OpenLogs);
-        dialog.ShowAction("千问总结", () => GitManager.Views.CommitMessages.QwenSettingsWindow.Open(dialog, ViewModel));
+        dialog.ShowAction("大模型总结", () => GitManager.Views.CommitMessages.QwenSettingsWindow.Open(dialog, ViewModel));
         if (dialog.ShowDialog() == true) await ViewModel.SaveSettingsAsync(fields[0].Value.Trim(), dialog.Theme, fields.Count > 1 ? fields[1].Value : "", fields.Count > 2 ? fields[2].Value : "");
     }
     private static void OpenLogs()

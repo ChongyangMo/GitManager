@@ -27,7 +27,7 @@ public static partial class QwenUsageLogImporter
                     var idMatch = RequestId().Match(line);
                     string id = idMatch.Success ? idMatch.Groups[1].Value
                         : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFileName(path) + "\n" + lineNumber + "\n" + line)));
-                    if (File.Exists(Path.Combine(store.DirectoryPath, id + ".json"))) continue;
+                    if (store.Contains(id)) continue;
                     var money = Cost().Match(line);
                     decimal? min = ParseMoney(money.Groups[1].Value), max = ParseMoney(money.Groups[2].Value);
                     store.Save(new QwenUsageEntry

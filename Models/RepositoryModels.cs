@@ -5,8 +5,25 @@ namespace GitManager.Models;
 public sealed class RepositoryBookmark(string path) : ObservableObject
 {
     private string? _displayName;
-    public string Path { get; } = path;
+    private bool _hasNameConflict;
+    private string _conflictHint = "";
+    private string _path = Services.Repositories.RepositoryPaths.Actual(path);
+    public string Path => _path;
+    public bool RefreshPath()
+    {
+        string actual = Services.Repositories.RepositoryPaths.Actual(Path);
+        if (!Set(ref _path, actual, nameof(Path))) return false;
+        Notify(nameof(Name));
+        return true;
+    }
     public string Name => _displayName ?? (System.IO.Path.GetFileName(Path.TrimEnd('\\', '/')) is { Length: > 0 } name ? name : Path);
+    public bool HasNameConflict { get => _hasNameConflict; private set => Set(ref _hasNameConflict, value); }
+    public string ConflictHint { get => _conflictHint; private set => Set(ref _conflictHint, value); }
+    public void UpdateNameConflict(IReadOnlyList<RepositoryBookmark> copies)
+    {
+        HasNameConflict = copies.Count > 1;
+        ConflictHint = HasNameConflict ? "同名仓库，点击比较\n" + string.Join("\n", copies.Select(item => item.Path)) : Path;
+    }
     public void UpdateDisplayName(string? name)
     {
         if (Set(ref _displayName, string.IsNullOrWhiteSpace(name) ? null : name)) Notify(nameof(Name));

@@ -67,16 +67,22 @@ internal static partial class Program
                 Check(!File.ReadAllText(settings.FilePath).Contains("ApiKey", StringComparison.OrdinalIgnoreCase), "配置文件不包含密钥字段");
                 if (QwenCredentials.Read(options) is null)
                 {
+                    settings.Value.Claude.Enabled = false;
                     bool blocked = false;
                     try { await new CommitMessageGenerator(Git, settings).GenerateAsync(root, files, default); }
                     catch (InvalidOperationException ex) { blocked = ex.Message.Contains("API Key"); }
                     Check(blocked && (await Runner.RunAsync(root, ["rev-parse", "HEAD"])).Output == head,
                         "未填写密钥时明确提示配置，不发起调用或创建提交");
                 }
-                var window = new QwenSettingsWindow(options) { ShowInTaskbar = false, ShowActivated = false,
+                var window = new QwenSettingsWindow(options, new ClaudeOptions()) { ShowInTaskbar = false, ShowActivated = false,
                     Left = -30000, Top = -30000, WindowStartupLocation = WindowStartupLocation.Manual };
                 window.Show();
+                var note = Descendants(window).OfType<TextBlock>().First(block => block.Name == "NoteText");
+                var deadline = DateTimeOffset.UtcNow.AddSeconds(20);
+                while (note.Text.StartsWith("正在检测", StringComparison.Ordinal) && DateTimeOffset.UtcNow < deadline) await Task.Delay(50);
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+                Check(note.Text.Contains("1. Claude") && note.Text.Contains("2. 千问") && note.Text.Contains("当前使用："), "设置窗口展示大模型总结顺位");
+                Console.WriteLine("总结顺位：" + Environment.NewLine + note.Text);
                 Check(Descendants(window).OfType<PasswordBox>().Count(box => box.IsVisible) == 1, "千问设置使用密码输入框");
                 Check(window.Options.Model == "qwen3.8-flash" && window.OptionValue, "设置默认启用千问3.8 Flash");
                 string screenshot = Path.Combine(Directory.GetCurrentDirectory(), "artifacts", "qwen-settings-dark.png");

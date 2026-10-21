@@ -16,7 +16,7 @@ public sealed partial class GitRepositoryService(GitRunner runner)
         string root = Path.GetFullPath(result.Output.Trim());
         if (!string.Equals(Path.TrimEndingDirectorySeparator(root), Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory)), StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("请选择仓库根目录，当前目录属于上级仓库：" + root);
-        return root;
+        return Repositories.RepositoryPaths.Actual(root);
     }
 
     public async Task<string> InitializeAsync(string directory)

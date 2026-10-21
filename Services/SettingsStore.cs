@@ -13,11 +13,25 @@ public sealed class AppSettings
     public Repositories.RepositoryDiscoveryOptions RepositoryDiscovery { get; set; } = new();
     public ServiceCloud.ServiceCloudOptions ServiceCloud { get; set; } = null!;
     public CommitMessages.QwenOptions Qwen { get; set; } = new();
+    public CommitMessages.ClaudeOptions Claude { get; set; } = new();
 }
 
 public sealed class SettingsStore
 {
     public static string DataDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GitManager");
+
+    // 从打包应用（如 Codex）启动时，Windows 会把 LocalAppData 的写入重定向到 Packages\<包名>\LocalCache\Local
+    public static IReadOnlyList<string> PackagedDataDirectories()
+    {
+        string packages = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Packages");
+        try
+        {
+            return Directory.EnumerateDirectories(packages)
+                .Select(package => Path.Combine(package, "LocalCache", "Local", "GitManager"))
+                .Where(Directory.Exists).ToArray();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return []; }
+    }
     public string FilePath { get; }
     public AppSettings Value { get; }
 
@@ -31,6 +45,7 @@ public sealed class SettingsStore
         Value.RepositoryDiscovery ??= new();
         Value.RepositoryDiscovery.Roots ??= [];
         Value.Qwen ??= new();
+        Value.Claude ??= new();
         Value.Qwen.PublicGitHosts ??= [];
         if (Value.ServiceCloud is null)
         {
@@ -38,6 +53,11 @@ public sealed class SettingsStore
             Value.ServiceCloud = File.Exists(defaults)
                 ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(defaults))?.ServiceCloud ?? new()
                 : new();
+        }
+        if (Repositories.RepositoryPaths.Refresh(Value) && File.Exists(FilePath))
+        {
+            Save();
+            AppLog.Write("已按磁盘实际目录名更新仓库路径记录");
         }
     }
 

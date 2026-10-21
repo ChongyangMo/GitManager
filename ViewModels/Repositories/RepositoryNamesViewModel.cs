@@ -13,5 +13,15 @@ public sealed partial class MainViewModel
         { AppLog.Write("读取仓库显示名称失败：" + bookmark.Path, ex); }
     }
 
-    private Task RefreshRepositoryNamesAsync() => Task.WhenAll(Repositories.ToArray().Select(RefreshRepositoryNameAsync));
+    private Task RefreshRepositoryNamesAsync()
+    {
+        bool changed = false;
+        foreach (var bookmark in Repositories) changed |= bookmark.RefreshPath();
+        if (changed)
+        {
+            if (Settings.Value.LastRepository is { } last) Settings.Value.LastRepository = RepositoryPaths.Actual(last);
+            SaveBookmarks();
+        }
+        return Task.WhenAll(Repositories.ToArray().Select(RefreshRepositoryNameAsync));
+    }
 }

@@ -3,10 +3,16 @@ using System.Text.Json;
 
 namespace GitManager.Services.CommitMessages.Usage;
 
-public sealed class QwenUsageStore(string directory)
+public sealed class QwenUsageStore(string directory, IReadOnlyList<string>? sharedDataDirectories = null)
 {
-    public static QwenUsageStore Default { get; } = new(Path.Combine(SettingsStore.DataDirectory, "qwen-usage"));
+    public static QwenUsageStore Default { get; } = new(Path.Combine(SettingsStore.DataDirectory, "qwen-usage"), SettingsStore.PackagedDataDirectories());
     public string DirectoryPath { get; } = directory;
+    // 其他启动方式留下的数据目录，只读取其中的用量记录和日志，新记录始终写入 DirectoryPath
+    private readonly string[] _sharedDataDirectories = (sharedDataDirectories ?? [])
+        .Where(root => !SamePath(Path.Combine(root, "qwen-usage"), directory)).ToArray();
+    private IEnumerable<string> Directories => _sharedDataDirectories.Select(root => Path.Combine(root, "qwen-usage")).Prepend(DirectoryPath);
+
+    public bool Contains(string id) => Directories.Any(path => File.Exists(Path.Combine(path, id + ".json")));
 
     public void Save(QwenUsageEntry entry, bool overwrite = true)
     {
@@ -33,23 +39,33 @@ public sealed class QwenUsageStore(string directory)
 
     public QwenUsageReadResult Read(string? logsDirectory = null)
     {
-        int unreadable = logsDirectory is null ? 0 : QwenUsageLogImporter.Import(this, logsDirectory);
-        if (!Directory.Exists(DirectoryPath)) return new([], unreadable);
-        List<QwenUsageEntry> entries = [];
-        foreach (string file in Directory.EnumerateFiles(DirectoryPath, "*.json"))
+        int unreadable = 0;
+        if (logsDirectory is not null)
+            foreach (string logs in _sharedDataDirectories.Select(root => Path.Combine(root, "logs")).Prepend(logsDirectory))
+                unreadable += QwenUsageLogImporter.Import(this, logs);
+        Dictionary<string, QwenUsageEntry> entries = new(StringComparer.OrdinalIgnoreCase);
+        foreach (string path in Directories.Where(Directory.Exists))
         {
-            try
+            IEnumerable<string> files;
+            try { files = Directory.EnumerateFiles(path, "*.json").ToArray(); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { unreadable++; continue; }
+            foreach (string file in files)
             {
-                var entry = JsonSerializer.Deserialize<QwenUsageEntry>(File.ReadAllText(file));
-                if (entry is null || !ValidId(entry.Id) || entry.Id != Path.GetFileNameWithoutExtension(file)
-                    || entry.Time == default || string.IsNullOrWhiteSpace(entry.Model) || entry.Cost is null)
-                { unreadable++; continue; }
-                entries.Add(entry);
+                try
+                {
+                    var entry = JsonSerializer.Deserialize<QwenUsageEntry>(File.ReadAllText(file));
+                    if (entry is null || !ValidId(entry.Id) || entry.Id != Path.GetFileNameWithoutExtension(file)
+                        || entry.Time == default || string.IsNullOrWhiteSpace(entry.Model) || entry.Cost is null)
+                    { unreadable++; continue; }
+                    entries.TryAdd(entry.Id, entry);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { unreadable++; }
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { unreadable++; }
         }
-        return new(entries.OrderByDescending(entry => entry.Time).ToArray(), unreadable);
+        return new(entries.Values.OrderByDescending(entry => entry.Time).ToArray(), unreadable);
     }
 
     private static bool ValidId(string? id) => id is { Length: >= 16 and <= 64 } && id.All(char.IsAsciiHexDigit);
+    private static bool SamePath(string left, string right) => string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(left)),
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)), StringComparison.OrdinalIgnoreCase);
 }

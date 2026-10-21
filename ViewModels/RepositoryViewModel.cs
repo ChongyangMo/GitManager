@@ -13,6 +13,7 @@ public sealed partial class MainViewModel
         string root = await Git.OpenAsync(path);
         var bookmark = Repositories.FirstOrDefault(item => string.Equals(item.Path, root, StringComparison.OrdinalIgnoreCase));
         if (bookmark is null) { bookmark = new(root); Repositories.Add(bookmark); }
+        else bookmark.RefreshPath();
         await RefreshRepositoryNameAsync(bookmark);
         Repository = bookmark;
         Settings.Value.IgnoredRepositories.RemoveAll(path => string.Equals(path, root, StringComparison.OrdinalIgnoreCase));
@@ -51,25 +52,7 @@ public sealed partial class MainViewModel
         _refreshAfterOperation = false;
     }
 
-    public Task RemoveRepositoryAsync(RepositoryBookmark bookmark) => ExecuteAsync("正在移除仓库记录", async () =>
-    {
-        if (!Settings.Value.IgnoredRepositories.Contains(bookmark.Path, StringComparer.OrdinalIgnoreCase))
-            Settings.Value.IgnoredRepositories.Add(bookmark.Path);
-        Repositories.Remove(bookmark);
-        _workspaceCache.Remove(bookmark.Path);
-        if (Repository == bookmark)
-        {
-            CancelCommitSummary();
-            Repository = null;
-            ClearVersions();
-            Changes.Clear(); History.Clear(); HistoryFiles.Clear(); Branches.Clear();
-            Comparison = null; Branch = ""; Remote = "";
-            Settings.Value.LastRepository = null;
-            if (Repositories.FirstOrDefault() is { } next) await OpenCoreAsync(next.Path);
-        }
-        SaveBookmarks();
-        Notify(nameof(ChangesTitle)); Notify(nameof(HistoryTitle));
-    });
+    public Task RemoveRepositoryAsync(RepositoryBookmark bookmark) => RemoveRepositoryCopyAsync(bookmark, false);
 
     public Task SwitchBranchAsync(string branch, bool create = false) => ExecuteAsync("正在切换分支", async () =>
     {
