@@ -10,19 +10,25 @@ public sealed class RepositoryCopyReader(GitRepositoryService git)
     public async Task<RepositoryCopyComparison> ReadAsync(IReadOnlyList<RepositoryBookmark> bookmarks)
     {
         var copies = await Task.WhenAll(bookmarks.Select((bookmark, index) => ReadCopyAsync(bookmark, index + 1)));
-        var differences = new List<RepositoryCopyDifference>();
+        List<RepositoryCopyDifference> differences = [], lineEndings = [];
         if (copies.All(copy => copy.Error.Length == 0))
         {
             foreach (string path in copies.SelectMany(copy => copy.Files.Keys).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal))
             {
-                string?[] values = copies.Select(copy => copy.Files.GetValueOrDefault(path)).ToArray();
-                if (values.Distinct(StringComparer.Ordinal).Count() == 1) continue;
-                var versions = values.Where(value => value is not null).Distinct(StringComparer.Ordinal).ToList();
+                var values = copies.Select(copy => copy.Files.GetValueOrDefault(path)).ToArray();
+                if (values.Select(value => value?.Hash).Distinct(StringComparer.Ordinal).Count() == 1) continue;
+                // 同一提交在不同 core.autocrlf 下检出会得到 CRLF/LF 两种文件，内容一致，单独列出不计入差异。
+                if (values.All(value => value is not null) && values.Select(value => value!.Content).Distinct(StringComparer.Ordinal).Count() == 1)
+                {
+                    lineEndings.Add(new(path, string.Join("；", values.Select((value, index) => $"{index + 1}：{value!.LineEnding}"))));
+                    continue;
+                }
+                var versions = values.Where(value => value is not null).Select(value => value!.Content).Distinct(StringComparer.Ordinal).ToList();
                 differences.Add(new(path, string.Join("；", values.Select((value, index) =>
-                    $"{index + 1}：" + (value is null ? "缺失" : versions.Count == 1 ? "存在" : $"内容 {versions.IndexOf(value) + 1}")))));
+                    $"{index + 1}：" + (value is null ? "缺失" : versions.Count == 1 ? "存在" : $"内容 {versions.IndexOf(value.Content) + 1}")))));
             }
         }
-        return new(copies, differences);
+        return new(copies, differences, lineEndings);
     }
 
     private async Task<RepositoryCopySnapshot> ReadCopyAsync(RepositoryBookmark bookmark, int number)
@@ -48,24 +54,63 @@ public sealed class RepositoryCopyReader(GitRepositoryService git)
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception or TimeoutException)
         {
             AppLog.Write("读取同名仓库差异失败：" + bookmark.Path, ex);
-            return new(bookmark, number, "未读取", "未读取", "未读取", "未读取", new Dictionary<string, string>(), AppLog.Clean(ex.Message));
+            return new(bookmark, number, "未读取", "未读取", "未读取", "未读取", new Dictionary<string, RepositoryFileFingerprint>(), AppLog.Clean(ex.Message));
         }
     }
 
-    private static Dictionary<string, string> ReadFiles(string root, string output)
+    private static Dictionary<string, RepositoryFileFingerprint> ReadFiles(string root, string output)
     {
-        var files = new Dictionary<string, string>(StringComparer.Ordinal);
+        var files = new Dictionary<string, RepositoryFileFingerprint>(StringComparer.Ordinal);
         foreach (string path in output.Split('\0', StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.Ordinal))
         {
             string fullPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(root, path));
             if (!fullPath.StartsWith(root.TrimEnd('\\', '/') + System.IO.Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                 throw new IOException("仓库文件路径超出根目录。");
             // 子模块是独立仓库，不把目录当作普通文件读取。
-            if (Directory.Exists(fullPath)) { files[path] = "子模块未比较"; continue; }
-            if (!File.Exists(fullPath)) { files[path] = "工作区已删除"; continue; }
+            if (Directory.Exists(fullPath)) { files[path] = RepositoryFileFingerprint.Special(RepositoryFileFingerprint.Submodule); continue; }
+            if (!File.Exists(fullPath)) { files[path] = RepositoryFileFingerprint.Special("工作区已删除"); continue; }
             using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            files[path] = Convert.ToHexString(SHA256.HashData(stream));
+            files[path] = Fingerprint(stream);
         }
         return files;
+    }
+
+    // 一次读取同时计算原始哈希和 CRLF→LF 后的内容哈希；与 Git 一致，前 8000 字节含 NUL 视为二进制，不做换行处理。
+    public static RepositoryFileFingerprint Fingerprint(Stream stream)
+    {
+        const byte CarriageReturn = 13, LineFeed = 10;
+        using var raw = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        using var content = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        byte[] buffer = new byte[81920], normalized = new byte[buffer.Length + 1];
+        bool? binary = null;
+        bool pendingCr = false;
+        long crlf = 0, lf = 0;
+        int read;
+        while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            raw.AppendData(buffer, 0, read);
+            binary ??= buffer.AsSpan(0, Math.Min(read, 8000)).Contains((byte)0);
+            if (binary.Value) continue;
+            int length = 0;
+            for (int i = 0; i < read; i++)
+            {
+                byte value = buffer[i];
+                if (pendingCr)
+                {
+                    pendingCr = false;
+                    if (value == LineFeed) { crlf++; normalized[length++] = value; continue; }
+                    normalized[length++] = CarriageReturn;
+                }
+                if (value == CarriageReturn) { pendingCr = true; continue; }
+                if (value == LineFeed) lf++;
+                normalized[length++] = value;
+            }
+            content.AppendData(normalized, 0, length);
+        }
+        if (pendingCr) content.AppendData([CarriageReturn]);
+        string hash = Convert.ToHexString(raw.GetHashAndReset());
+        if (binary == true) return new(hash, hash, "");
+        string lineEnding = (crlf, lf) switch { (0, 0) => "无换行", (_, 0) => "CRLF", (0, _) => "LF", _ => "CRLF/LF 混合" };
+        return new(hash, Convert.ToHexString(content.GetHashAndReset()), lineEnding);
     }
 }

@@ -47,6 +47,16 @@
                         </Grid>
                     </DataTemplate></ListBox.ItemTemplate>
                 </ListBox>
+                <Button x:Name="LineEndingToggle" Visibility="Collapsed" HorizontalAlignment="Left" Style="{StaticResource WorkspaceButton}"
+                        Margin="0,12,0,8" Click="LineEndingToggleClicked" ToolTip="同一内容在不同 core.autocrlf 设置下检出，只是 CRLF 与 LF 不同，不影响提交内容。"/>
+                <ListBox x:Name="LineEndingList" Visibility="Collapsed" Style="{StaticResource WorkspaceList}" MaxHeight="240" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                    <ListBox.ItemTemplate><DataTemplate>
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="480"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding Path}" TextWrapping="Wrap" Margin="0,0,16,0" Foreground="{DynamicResource MutedBrush}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Difference}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
+                        </Grid>
+                    </DataTemplate></ListBox.ItemTemplate>
+                </ListBox>
             </StackPanel>
         </ScrollViewer>
         <Button Grid.Row="2" Content="关闭" IsCancel="True" HorizontalAlignment="Right" Style="{StaticResource WorkspaceButton}" Margin="0,16,0,0"/>

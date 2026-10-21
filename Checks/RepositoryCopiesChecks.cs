@@ -69,16 +69,23 @@ internal static partial class Program
                 var invalid = await new RepositoryCopyReader(Git).ReadAsync([new RepositoryBookmark(Path.Combine(output, "missing")), sameName[0]]);
                 Check(invalid.Copies[0].Error.Length > 0 && invalid.FileStatus == "文件比较未完成" && !invalid.Copies[0].CanDeleteLocal,
                     "目录读取失败明确显示未知，不伪报内容相同");
-                var different = await new RepositoryCopyReader(Git).ReadAsync([sameName[0], model.Repositories.First(item => item.Name == "GitManager")]);
-                Check(different.Copies.All(copy => copy.Error.Length == 0) && different.Differences.Any(file => file.Difference.Contains("缺失"))
-                    && different.Differences.Any(file => file.Difference.Contains("内容")), "不同真实仓库能定位缺失文件和内容不同的文件");
                 bool guarded = false;
                 try { RepositoryLocalDeletion.ValidateTarget(sameName[0].Path, [Path.Combine(sameName[0].Path, "nested")]); }
                 catch (InvalidOperationException) { guarded = true; }
                 Check(guarded, "删除保护阻止连带删除其他仓库");
 
+                // 用真实仓库的副本制造确定的改动：修改一个跟踪文件、新增一个文件，不依赖用户列表里恰好有内容不同的仓库。
                 string clone = Path.Combine(output, "recycle-check");
                 await Runner.RunAsync(null, ["clone", "--local", "--no-hardlinks", "--", sameName[0].Path, clone]);
+                string tracked = (await Runner.RunAsync(clone, ["ls-files", "-z"])).Output.Split('\0', StringSplitOptions.RemoveEmptyEntries)
+                    .First(path => File.Exists(Path.Combine(clone, path)));
+                await File.AppendAllTextAsync(Path.Combine(clone, tracked), "\n同名仓库校验改动\n");
+                await File.WriteAllTextAsync(Path.Combine(clone, "同名仓库校验新增.txt"), "新增\n");
+                var different = await new RepositoryCopyReader(Git).ReadAsync([sameName[0], new RepositoryBookmark(clone)]);
+                Check(different.Copies.All(copy => copy.Error.Length == 0)
+                    && different.Differences.Any(file => file.Path == "同名仓库校验新增.txt" && file.Difference == "1：缺失；2：存在")
+                    && different.Differences.Any(file => file.Path == tracked && file.Difference == "1：内容 1；2：内容 2"), "不同真实仓库能定位缺失文件和内容不同的文件");
+                Console.WriteLine($"真实副本对比：{different.FileStatus}");
                 var deletion = new RepositoryLocalDeletion(Git);
                 await deletion.RecycleAsync(new RepositoryBookmark(clone), [sameName[0].Path]);
                 Check(!Directory.Exists(clone) && Directory.Exists(sameName[0].Path), "实际副本进入回收站，原仓库完整保留");

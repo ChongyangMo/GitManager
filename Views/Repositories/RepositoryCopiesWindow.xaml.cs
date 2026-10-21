@@ -36,6 +36,10 @@ public partial class RepositoryCopiesWindow : Window
             Comparison = await new RepositoryCopyReader(_owner.Git).ReadAsync(_bookmarks);
             CopiesList.ItemsSource = Comparison.Copies;
             DifferencesList.ItemsSource = Comparison.Differences;
+            LineEndingList.ItemsSource = Comparison.LineEndingDifferences;
+            LineEndingList.Visibility = Visibility.Collapsed;
+            LineEndingToggle.Visibility = Comparison.LineEndingDifferences.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            UpdateLineEndingToggle();
             FileState.Text = Comparison.FileStatus;
             StateText.Text = "";
         }
@@ -46,6 +50,15 @@ public partial class RepositoryCopiesWindow : Window
         }
         finally { _loading = false; CopiesList.IsEnabled = true; }
     }
+
+    private void LineEndingToggleClicked(object sender, RoutedEventArgs e)
+    {
+        LineEndingList.Visibility = LineEndingList.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+        UpdateLineEndingToggle();
+    }
+
+    private void UpdateLineEndingToggle() => LineEndingToggle.Content = (LineEndingList.Visibility == Visibility.Visible ? "隐藏" : "查看")
+        + $" {Comparison?.LineEndingDifferences.Count ?? 0} 个仅换行符不同的文件";
 
     private void OpenFolderClicked(object sender, RoutedEventArgs e)
     {
