@@ -39,12 +39,33 @@ internal static partial class Program
                 var merged = new QwenUsageStore(isolated.DirectoryPath, [packaged]).Read();
                 Check(merged.Entries.Count == 2 && merged.UnreadableCount == 0, "同时读取打包启动目录的记录，同一调用只计一次");
                 Check(!JsonSerializer.Serialize(first.Entries).Contains("ApiKey", StringComparison.OrdinalIgnoreCase), "记录不包含密钥字段");
+                string legacyDirectory = Path.Combine(Path.GetTempPath(), "GitManagerUsageChecks", Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(legacyDirectory);
+                string legacyId = Guid.NewGuid().ToString("N");
+                File.WriteAllText(Path.Combine(legacyDirectory, legacyId + ".json"), "{\"Id\":\"" + legacyId + "\",\"Time\":\"2026-10-21T09:00:00+08:00\",\"Model\":\"qwen3.8-flash\",\"Result\":\"成功\",\"Cost\":{\"Minimum\":0.1,\"Maximum\":0.1,\"Detail\":\"旧记录\"}}");
+                Check(new QwenUsageStore(legacyDirectory).Read().Entries.Single().ProviderLabel == QwenUsageEntry.QwenProvider, "没有来源字段的旧记录显示为千问");
+                string claudeLogs = Path.Combine(legacyDirectory, "logs");
+                Directory.CreateDirectory(claudeLogs);
+                string claudeId = Guid.NewGuid().ToString("N");
+                File.WriteAllLines(Path.Combine(claudeLogs, "gitmanager-20261021.log"), [
+                    "[10:28:41] Claude 调用用量：模型 claude-haiku-5-5，输入 1337，输出 37 个令牌，耗时 4664 毫秒，按 API 标价折合 $0.005566",
+                    $"[11:00:00] Claude 调用用量：模型 claude-haiku-5-5，输入 10，输出 2 个令牌，耗时 900 毫秒，按 API 标价折合 $未返回，调用编号 {claudeId}"]);
+                var claudeStore = new QwenUsageStore(Path.Combine(legacyDirectory, "claude-usage"));
+                claudeStore.Save(new QwenUsageEntry { Id = claudeId, Time = DateTimeOffset.Now, Provider = QwenUsageEntry.ClaudeProvider, Model = "claude-haiku-5-5",
+                    Result = "成功", InputTokens = 10, OutputTokens = 2, Cost = new(0m, 0m, "检查记录") });
+                var imported = claudeStore.Read(claudeLogs).Entries;
+                Check(imported.Count == 2 && imported.All(entry => entry.Provider == QwenUsageEntry.ClaudeProvider && entry.Cost.Minimum == 0m)
+                    && imported.Any(entry => entry.Result == "历史记录" && entry.InputTokens == 1337 && entry.Cost.Detail.Contains("$0.005566")),
+                    "历史 Claude 调用导入为 Claude 记录，带编号的调用不重复计入");
+                var mixed = new GitManager.ViewModels.CommitMessages.Usage.QwenUsageSummary([.. imported, new QwenUsageEntry { Id = legacyId, Time = DateTimeOffset.Now, Model = "qwen", InputTokens = 100, CachedTokens = 0, OutputTokens = 1, Cost = new(0.1m, 0.1m, "") }]);
+                Check(mixed.Providers == "Claude 2 · 千问 1" && mixed.Cost == "¥0.1" && !mixed.Cached.Contains("待确认"),"汇总分别统计 Claude 与千问次数，Claude 不计入千问费用：" + mixed.Providers + " " + mixed.Cost);
                 var window = new QwenUsageWindow(options) { ShowInTaskbar = false, ShowActivated = false,
                     Left = -30000, Top = -30000, WindowStartupLocation = WindowStartupLocation.Manual };
                 window.Show();
                 var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
                 while ((!window.ViewModel.CanRefresh || window.ViewModel.Summary is null) && DateTimeOffset.UtcNow < deadline) await Task.Delay(10);
                 Check(window.ViewModel.Summary is not null && window.ViewModel.Rows.Count == first.Entries.Count, "窗口显示实际累计调用次数与明细");
+                Check(window.ViewModel.Rows.Select(row => row.Provider).SequenceEqual(first.Entries.Select(entry => entry.ProviderLabel)), "明细逐条显示 Claude 或千问来源");
                 if (first.Entries.Any(entry => entry.Cost.Minimum is null))
                     Check(window.ViewModel.Summary!.Cost.Contains("待确认"), "历史费用缺失时不把未知费用算作零");
                 window.ViewModel.Period = "今天";

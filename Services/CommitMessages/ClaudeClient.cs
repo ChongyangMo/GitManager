@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using GitManager.Services.CommitMessages.Usage;
 
 namespace GitManager.Services.CommitMessages;
 
@@ -34,32 +35,54 @@ public static class ClaudeClient
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or TimeoutException or System.ComponentModel.Win32Exception) { return false; }
     }
 
-    public static async Task<ClaudeReply> GenerateAsync(ClaudeOptions options, string executable, string content, CancellationToken cancellationToken)
+    public static async Task<ClaudeReply> GenerateAsync(ClaudeOptions options, string executable, string content, CancellationToken cancellationToken, QwenUsageStore? usageStore = null)
     {
         if (string.IsNullOrWhiteSpace(options.Model) || options.Model.Any(char.IsControl) || options.TimeoutSeconds is < 10 or > 600)
             throw new InvalidOperationException("Claude 配置中的模型或超时设置无效。");
         // 不开放任何工具、不加载项目配置和 MCP，只做一次纯文本总结。
         string[] arguments = ["-p", "--model", options.Model.Trim(), "--output-format", "json", "--tools", "",
             "--system-prompt", QwenPrompt.System, "--no-session-persistence", "--strict-mcp-config", "--setting-sources", "", "--disable-slash-commands"];
+        string id = Guid.NewGuid().ToString("N");
+        var startedAt = DateTimeOffset.Now;
         var timer = Stopwatch.StartNew();
-        var result = await RunAsync(executable, arguments, content, TimeSpan.FromSeconds(options.TimeoutSeconds), cancellationToken);
-        JsonElement body;
-        try { using var document = JsonDocument.Parse(result.Output); body = document.RootElement.Clone(); }
-        catch (JsonException) { throw new InvalidOperationException("Claude 返回了无法识别的结果" + Detail(result.Error)); }
-        string text = body.TryGetProperty("result", out var value) && value.ValueKind == JsonValueKind.String ? value.GetString()!.Trim() : "";
-        if (body.TryGetProperty("is_error", out var isError) && isError.ValueKind == JsonValueKind.True)
-            throw new InvalidOperationException("Claude 调用失败" + Detail(text.Length > 0 ? text : result.Error));
-        if (text.Length == 0 || text.Contains('\0')) throw new InvalidOperationException("Claude 返回的提交说明为空或无效。");
-        long input = 0, output = 0;
-        if (body.TryGetProperty("usage", out var usage) && usage.ValueKind == JsonValueKind.Object)
+        string outcome = "失败";
+        int? input = null, cached = null, output = null;
+        string usd = "未返回";
+        try
         {
-            foreach (string name in new[] { "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens" })
-                if (usage.TryGetProperty(name, out var number) && number.TryGetInt64(out long count)) input += count;
-            if (usage.TryGetProperty("output_tokens", out var outputTokens) && outputTokens.TryGetInt64(out long outputCount)) output = outputCount;
+            var result = await RunAsync(executable, arguments, content, TimeSpan.FromSeconds(options.TimeoutSeconds), cancellationToken);
+            JsonElement body;
+            try { using var document = JsonDocument.Parse(result.Output); body = document.RootElement.Clone(); }
+            catch (JsonException) { throw new InvalidOperationException("Claude 返回了无法识别的结果" + Detail(result.Error)); }
+            if (body.TryGetProperty("usage", out var usage) && usage.ValueKind == JsonValueKind.Object)
+            {
+                long total = 0;
+                foreach (string name in new[] { "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens" })
+                    if (usage.TryGetProperty(name, out var number) && number.TryGetInt64(out long count)) total += count;
+                input = (int)Math.Min(total, int.MaxValue);
+                cached = usage.TryGetProperty("cache_read_input_tokens", out var read) && read.TryGetInt32(out int readCount) ? readCount : 0;
+                output = usage.TryGetProperty("output_tokens", out var outputTokens) && outputTokens.TryGetInt32(out int outputCount) ? outputCount : null;
+            }
+            if (body.TryGetProperty("total_cost_usd", out var cost) && cost.ValueKind == JsonValueKind.Number) usd = cost.GetDecimal().ToString("0.######");
+            string text = body.TryGetProperty("result", out var value) && value.ValueKind == JsonValueKind.String ? value.GetString()!.Trim() : "";
+            if (body.TryGetProperty("is_error", out var isError) && isError.ValueKind == JsonValueKind.True)
+                throw new InvalidOperationException("Claude 调用失败" + Detail(text.Length > 0 ? text : result.Error));
+            if (text.Length == 0 || text.Contains('\0')) throw new InvalidOperationException("Claude 返回的提交说明为空或无效。");
+            AppLog.Write($"Claude 调用用量：模型 {options.Model.Trim()}，输入 {input ?? 0}，输出 {output ?? 0} 个令牌，耗时 {timer.ElapsedMilliseconds} 毫秒，按 API 标价折合 ${usd}，调用编号 {id}");
+            outcome = "成功";
+            return new(text, new(0m, 0m, "使用本机 Claude 登录账号的额度，不产生千问费用"));
         }
-        string usd = body.TryGetProperty("total_cost_usd", out var cost) && cost.ValueKind == JsonValueKind.Number ? cost.GetDecimal().ToString("0.######") : "未返回";
-        AppLog.Write($"Claude 调用用量：模型 {options.Model.Trim()}，输入 {input}，输出 {output} 个令牌，耗时 {timer.ElapsedMilliseconds} 毫秒，按 API 标价折合 ${usd}");
-        return new(text, new(0m, 0m, "使用本机 Claude 登录账号的额度，不产生千问费用"));
+        catch (TimeoutException) { outcome = "超时"; throw; }
+        catch (OperationCanceledException) { outcome = "已取消"; throw; }
+        finally
+        {
+            (usageStore ?? QwenUsageStore.Default).TrySave(new QwenUsageEntry
+            {
+                Id = id, Time = startedAt, Provider = QwenUsageEntry.ClaudeProvider, Model = options.Model.Trim(),
+                Result = outcome, Milliseconds = timer.ElapsedMilliseconds, InputTokens = input, CachedTokens = cached, OutputTokens = output,
+                Cost = new(0m, 0m, "使用本机 Claude 登录账号的额度，不产生千问费用" + (usd == "未返回" ? "" : $"\n按 API 标价折合 ${usd}"))
+            });
+        }
     }
 
     private static string Detail(string text) => string.IsNullOrWhiteSpace(text) ? "。" : "：" + AppLog.Clean(text.Trim()).Split('\n')[0];

@@ -23,11 +23,24 @@ public static partial class QwenUsageLogImporter
                 {
                     lineNumber++;
                     var match = UsageLine().Match(line);
+                    bool claude = !match.Success && (match = ClaudeLine().Match(line)).Success;
                     if (!match.Success || !TimeSpan.TryParse(match.Groups["time"].Value, out var time)) continue;
                     var idMatch = RequestId().Match(line);
                     string id = idMatch.Success ? idMatch.Groups[1].Value
                         : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFileName(path) + "\n" + lineNumber + "\n" + line)));
                     if (store.Contains(id)) continue;
+                    if (claude)
+                    {
+                        string usd = match.Groups["usd"].Value;
+                        store.Save(new QwenUsageEntry
+                        {
+                            Id = id, Time = new DateTimeOffset(day.Add(time)), Provider = QwenUsageEntry.ClaudeProvider, Model = match.Groups["model"].Value,
+                            Result = "历史记录", InputTokens = ParseCount(match, "input"), OutputTokens = ParseCount(match, "output"),
+                            Milliseconds = long.Parse(match.Groups["ms"].Value, CultureInfo.InvariantCulture),
+                            Cost = new(0m, 0m, "使用本机 Claude 登录账号的额度，不产生千问费用" + (usd.Length > 0 ? $"\n按 API 标价折合 ${usd}" : ""))
+                        }, overwrite: false);
+                        continue;
+                    }
                     var money = Cost().Match(line);
                     decimal? min = ParseMoney(money.Groups[1].Value), max = ParseMoney(money.Groups[2].Value);
                     store.Save(new QwenUsageEntry
@@ -50,6 +63,8 @@ public static partial class QwenUsageLogImporter
 
     [GeneratedRegex(@"^\[(?<time>\d{2}:\d{2}:\d{2})\] 千问(?:调用用量|总结完成)：模型 (?<model>[^，]+)，输入 (?<input>\d+|未返回)，缓存命中 (?<cached>\d+|未返回)，输出 (?<output>\d+|未返回) 个令牌，缓存比例 [^，]+，耗时 (?<ms>\d+) 毫秒")]
     private static partial Regex UsageLine();
+    [GeneratedRegex(@"^\[(?<time>\d{2}:\d{2}:\d{2})\] Claude 调用用量：模型 (?<model>[^，]+)，输入 (?<input>\d+)，输出 (?<output>\d+) 个令牌，耗时 (?<ms>\d+) 毫秒(?:，按 API 标价折合 \$(?:(?<usd>[0-9.]+)|未返回))?")]
+    private static partial Regex ClaudeLine();
     [GeneratedRegex(@"调用编号 ([a-fA-F0-9]{32})(?:\b|$)")]
     private static partial Regex RequestId();
     [GeneratedRegex(@"预估 ¥([0-9]+(?:\.[0-9]+)?)(?:～¥([0-9]+(?:\.[0-9]+)?))?")]
