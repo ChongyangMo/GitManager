@@ -79,7 +79,9 @@ public sealed partial class MainViewModel
         await new GitManager.Services.GitRunner(() => gitPath).RunAsync(null, ["--version"]);
         Settings.Value.GitExecutablePath = gitPath;
         Settings.Value.Theme = theme;
+        Settings.Value.GitHub.CommitEmail = email;
         Settings.Save();
+        UserEmail = email;
         GitManager.Services.ThemeService.Apply(theme);
         if (HasRepository)
         {

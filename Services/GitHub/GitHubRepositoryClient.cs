@@ -58,6 +58,17 @@ public sealed class GitHubRepositoryClient : IDisposable
         return true;
     }
 
+    // GitHub 为每个账号提供与账号关联的 noreply 邮箱，不需要额外的邮箱读取授权。
+    public async Task<string> GetAccountEmailAsync(CancellationToken token = default)
+    {
+        using var response = await _http.GetAsync("user", token);
+        if (!response.IsSuccessStatusCode) throw Failure(response);
+        using var user = JsonDocument.Parse(await response.Content.ReadAsStringAsync(token));
+        long id = user.RootElement.GetProperty("id").GetInt64();
+        string login = user.RootElement.GetProperty("login").GetString()!;
+        return $"{id}+{login}@users.noreply.github.com";
+    }
+
     public async Task<GitHubRepositoryVisibility> GetVisibilityAsync(GitHubRepositoryAddress address, CancellationToken token = default)
     {
         using var response = await _http.GetAsync(address.ApiPath, token);

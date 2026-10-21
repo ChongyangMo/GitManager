@@ -164,13 +164,13 @@ public partial class MainWindow : Window
     }
     private async void SettingsClicked(object sender, RoutedEventArgs e)
     {
-        List<FormField> fields = [new("Git 程序", ViewModel.Settings.Value.GitExecutablePath, "file")];
-        if (ViewModel.HasRepository) { fields.Add(new("本仓库提交姓名", ViewModel.UserName)); fields.Add(new("本仓库提交邮箱", ViewModel.UserEmail, required: false)); }
-        var dialog = new FormWindow("设置", fields.ToArray()) { Owner = this };
+        List<FormField> fields = [new("Git 程序", ViewModel.Settings.Value.GitExecutablePath, "file"), new("提交邮箱（所有仓库统一，GitHub 关联邮箱）", ViewModel.Settings.Value.GitHub.CommitEmail)];
+        if (ViewModel.HasRepository) fields.Add(new("本仓库提交姓名", ViewModel.UserName));
+        var dialog = new FormWindow("设置", fields.ToArray()) { Owner = this, Validate = () => fields[1].Value.Trim() is var email && email.Contains('@') && !email.Any(char.IsWhiteSpace) ? null : "请填写有效的提交邮箱。" };
         dialog.ShowTheme(ViewModel.Settings.Value.Theme);
         dialog.ShowAction("打开日志", OpenLogs);
         dialog.ShowAction("大模型总结", () => GitManager.Views.CommitMessages.QwenSettingsWindow.Open(dialog, ViewModel));
-        if (dialog.ShowDialog() == true) await ViewModel.SaveSettingsAsync(fields[0].Value.Trim(), dialog.Theme, fields.Count > 1 ? fields[1].Value : "", fields.Count > 2 ? fields[2].Value : "");
+        if (dialog.ShowDialog() == true) await ViewModel.SaveSettingsAsync(fields[0].Value.Trim(), dialog.Theme, fields.Count > 2 ? fields[2].Value : "", fields[1].Value.Trim());
     }
     private static void OpenLogs()
     {

@@ -24,11 +24,14 @@ public sealed partial class GitRepositoryService
         return true;
     }
 
-    private async Task<GitHub.GitHubRepositoryClient> CreateGitHubClientAsync(string root, GitHub.GitHubRepositoryAddress address, string missingCredential, CancellationToken token)
+    private Task<GitHub.GitHubRepositoryClient> CreateGitHubClientAsync(string? root, GitHub.GitHubRepositoryAddress address, string missingCredential, CancellationToken token)
+        => CreateGitHubClientAsync(root, address.HttpsUrl, missingCredential, token);
+
+    private async Task<GitHub.GitHubRepositoryClient> CreateGitHubClientAsync(string? root, string httpsUrl, string missingCredential, CancellationToken token)
     {
         // 复用 Git 凭据管理器，令牌只在内存中使用，不写入配置或日志。
         var credential = await Runner.RunAsync(root, ["-c", "credential.interactive=false", "credential", "fill"], true, token,
-            standardInput: "url=" + address.HttpsUrl + "\n\n");
+            standardInput: "url=" + httpsUrl + "\n\n");
         string? secret = credential.Output.Split('\n').FirstOrDefault(line => line.StartsWith("password=", StringComparison.Ordinal))?[9..].TrimEnd('\r');
         if (credential.ExitCode != 0 || string.IsNullOrEmpty(secret))
             throw new InvalidOperationException(missingCredential);
@@ -36,7 +39,7 @@ public sealed partial class GitRepositoryService
         if (string.IsNullOrWhiteSpace(proxy))
         {
             var configured = await Runner.RunAsync(root, ["config", "--get-urlmatch", "http.proxy", "https://api.github.com/"], true, token);
-            if (configured.ExitCode == 1) configured = await Runner.RunAsync(root, ["config", "--get-urlmatch", "http.proxy", address.HttpsUrl], true, token);
+            if (configured.ExitCode == 1) configured = await Runner.RunAsync(root, ["config", "--get-urlmatch", "http.proxy", httpsUrl], true, token);
             if (configured.ExitCode is not (0 or 1)) throw new InvalidOperationException("读取 Git 代理配置失败，请检查仓库设置。");
             proxy = configured.Output.Trim();
         }

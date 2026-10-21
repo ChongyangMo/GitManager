@@ -13,7 +13,8 @@ namespace GitManager.Checks;
 internal static partial class Program
 {
     private static readonly GitRunner Runner = new(() => @"C:\Program Files\Git\cmd\git.exe");
-    private static readonly GitRepositoryService Git = new(Runner);
+    private const string ChecksCommitEmail = "gitmanager-checks@example.invalid";
+    private static readonly GitRepositoryService Git = new(Runner, new() { CommitEmail = ChecksCommitEmail });
     private static int _count;
 
     [STAThread]

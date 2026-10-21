@@ -117,7 +117,20 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         string? path = repository ?? Settings.Value.LastRepository ?? Repositories.FirstOrDefault()?.Path;
         if (path is not null) await OpenCoreAsync(path);
         StartRepositoryPushMonitoring();
+        _ = EnsureCommitEmailAsync();
     });
+
+    // 首次启动时从 GitHub 登录账号取得关联邮箱并保存，之后所有仓库提交统一使用。
+    private async Task EnsureCommitEmailAsync()
+    {
+        if (Settings.Value.GitHub.CommitEmail.Trim().Length > 0) return;
+        try
+        {
+            UserEmail = await Git.ResolveCommitEmailAsync(Repository?.Path, _lifetimeCancellation.Token);
+            Settings.Save();
+        }
+        catch (Exception ex) { if (!_disposed) AppLog.Write("从 GitHub 账号取得提交邮箱失败", ex); }
+    }
 
     private static void Replace<T>(ObservableCollection<T> destination, IEnumerable<T> source)
     {
