@@ -32,7 +32,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public bool HasRepository => Repository is not null;
     public bool CanOperate => HasRepository && IsIdle && !_workspaceLoading;
     public string Root => Repository?.Path ?? throw new InvalidOperationException("请先选择仓库。");
-    public RepositoryBookmark? Repository { get => _repository; private set { if (Set(ref _repository, value)) SetSummaryCost(null); Notify(nameof(HasRepository)); Notify(nameof(CanOperate)); } }
+    public RepositoryBookmark? Repository { get => _repository; private set { if (Set(ref _repository, value)) SetSummaryCost(null); Notify(nameof(HasRepository)); Notify(nameof(CanOperate)); NotifyAutoUpload(); } }
     public string Status { get => _status; private set => Set(ref _status, value); }
     public string Branch { get => _branch; set => Set(ref _branch, value); }
     public string Remote { get => _remote; private set { if (Set(ref _remote, value)) { Notify(nameof(RemoteAddresses)); Notify(nameof(HasRemoteAddresses)); } } }
@@ -70,6 +70,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _backgroundFetchCancellation?.Cancel();
         _busyFeedbackTimer?.Stop();
         _repositoryPushTimer?.Stop();
+        _autoUploadTimer?.Stop();
         _lifetimeCancellation.Cancel();
         _lifetimeCancellation.Dispose();
     }
@@ -84,6 +85,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             await PauseWorkspaceRefreshAsync();
             await StopBackgroundFetchAsync();
+            await WaitAutoUploadWriteAsync();
             await action();
             if (Status == message) Status = "就绪";
         }
@@ -117,6 +119,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         string? path = repository ?? Settings.Value.LastRepository ?? Repositories.FirstOrDefault()?.Path;
         if (path is not null) await OpenCoreAsync(path);
         StartRepositoryPushMonitoring();
+        StartAutoUploadMonitoring();
         _ = EnsureCommitEmailAsync();
     });
 

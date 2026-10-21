@@ -58,6 +58,7 @@ internal static partial class Program
             if (args.Length == 1 && args[0] == "--remote-groups") { RunRemoteGroupChecks(); return 0; }
             if (args.Length == 3 && args[0] == "--ui") { RenderPreview(args[1], args[2]); return 0; }
             if (args.Length == 1 && args[0] == "--versions") { RunVersionChecksAsync().GetAwaiter().GetResult(); return 0; }
+            if (args.Length == 1 && args[0] == "--auto-upload") { RunAutoUploadChecks(); return 0; }
             string testRoot = RunChecksAsync().GetAwaiter().GetResult();
             Console.WriteLine($"检查通过，共 {_count} 项。真实临时仓库：{testRoot}");
             if (args.Length == 2) RenderPreview(args[0], args[1]);

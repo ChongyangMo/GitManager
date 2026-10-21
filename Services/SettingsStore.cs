@@ -13,6 +13,7 @@ public sealed class AppSettings
     public Dictionary<string, Layout.PaneLayoutState> WorkspaceLayout { get; set; } = new();
     public List<string> IgnoredRepositories { get; set; } = [];
     public Repositories.RepositoryDiscoveryOptions RepositoryDiscovery { get; set; } = new();
+    public Repositories.AutoUploadOptions AutoUpload { get; set; } = new();
     public ServiceCloud.ServiceCloudOptions ServiceCloud { get; set; } = null!;
     public CommitMessages.QwenOptions Qwen { get; set; } = new();
     public CommitMessages.ClaudeOptions Claude { get; set; } = new();
@@ -50,6 +51,8 @@ public sealed class SettingsStore
         Value.IgnoredRepositories ??= [];
         Value.RepositoryDiscovery ??= new();
         Value.RepositoryDiscovery.Roots ??= [];
+        Value.AutoUpload ??= new();
+        Value.AutoUpload.Repositories ??= [];
         Value.Qwen ??= new();
         Value.Claude ??= new();
         Value.Codex ??= new();
