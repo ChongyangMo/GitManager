@@ -9,7 +9,7 @@ public sealed partial class MainViewModel
         {
             await FetchRemoteCoreAsync(tolerateFailure: false);
             var outcome = await Git.SynchronizeVersionsAsync(Root, SelectedRemoteBranch, operation, fetch: false);
-            if (outcome.HasConflicts) ActiveTab = 0;
+            if (outcome.HasConflicts) ActiveTab = ChangesTab;
             await RefreshCoreAsync();
             Status = outcome.Message;
         }
@@ -33,7 +33,7 @@ public sealed partial class MainViewModel
     {
         if (SelectedRemoteCommit is null) throw new InvalidOperationException("请先选择远程版本。");
         string? checkpoint = await Git.RestoreVersionAsync(Root, SelectedRemoteCommit.Hash);
-        ActiveTab = 0;
+        ActiveTab = ChangesTab;
         await RefreshCoreAsync();
         Status = checkpoint is null ? "已恢复远程版本，检查后可提交" : "已恢复远程版本，原修改已保存到恢复点";
     });

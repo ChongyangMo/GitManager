@@ -30,14 +30,14 @@ public sealed partial class MainViewModel
         var after = selection.FollowHeads ? null : choices.FirstOrDefault(item => item == selection.After);
         before ??= choices.FirstOrDefault(item => item.Source == remoteSource) ?? choices.Where(item => item.Source == localSource).Skip(1).FirstOrDefault() ?? choices.FirstOrDefault();
         after ??= choices.FirstOrDefault(item => item.Source == localSource);
-        var versionFiles = selection.Tab == 3 && before is not null && after is not null
+        var versionFiles = selection.Tab == VersionTab && before is not null && after is not null
             ? await Git.ReadVersionDifferencesAsync(root, before.Commit.Hash, after.Commit.Hash) : [];
         var versionFile = versionFiles.FirstOrDefault(item => item.Path == selection.VersionFile) ?? versionFiles.FirstOrDefault();
         FileComparison? comparison = selection.Tab switch
         {
-            0 => change is null ? null : await Git.CompareWorkingAsync(root, change, snapshot.HasHead),
-            1 => commit is null || historyFile is null ? null : await Git.CompareHistoryAsync(root, commit, historyFile),
-            2 => remoteCommit is null || remoteFile is null ? null : await Git.CompareHistoryAsync(root, remoteCommit, remoteFile),
+            ChangesTab => change is null ? null : await Git.CompareWorkingAsync(root, change, snapshot.HasHead),
+            HistoryTab => commit is null || historyFile is null ? null : await Git.CompareHistoryAsync(root, commit, historyFile),
+            RemoteTab => remoteCommit is null || remoteFile is null ? null : await Git.CompareHistoryAsync(root, remoteCommit, remoteFile),
             ReadmeTab => null,
             _ => before is null || after is null ? null : versionFile is null
                 ? new("", "", "", before.Label, after.Label, versionFiles.Count == 0 ? "两个版本内容一致。" : "选择文件查看差异。")

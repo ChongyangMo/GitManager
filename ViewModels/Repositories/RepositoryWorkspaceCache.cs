@@ -79,7 +79,7 @@ public sealed partial class MainViewModel
         Changes.Clear(); History.Clear(); HistoryFiles.Clear(); Branches.Clear();
         SelectedChange = null; SelectedCommit = null; SelectedHistoryFile = null;
         ClearVersions(); Comparison = null; Readme = null;
-        ActiveTab = 0;
+        ActiveTab = ReadmeTab;
         Notify(nameof(ChangesTitle)); Notify(nameof(HistoryTitle));
     }
 }

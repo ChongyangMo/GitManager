@@ -57,7 +57,7 @@ public sealed partial class MainViewModel
         ComparisonBefore = VersionChoices.First(item => item.Commit.Hash == remote.Hash && item.Source.StartsWith(RemoteSource + " ", StringComparison.Ordinal));
         ComparisonAfter = VersionChoices.First(item => item.Commit.Hash == _versions.LocalHead.Hash && item.Source.StartsWith("本地 ", StringComparison.Ordinal));
         _followHeads = !selectedRemoteCommit;
-        ActiveTab = 3;
+        ActiveTab = VersionTab;
         await LoadVersionFilesCoreAsync();
         await LoadComparisonCoreAsync();
     });

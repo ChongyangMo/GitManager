@@ -57,7 +57,7 @@ public sealed partial class MainViewModel
         SelectedRemoteCommit = RemoteHistory.FirstOrDefault(item => item.Hash == selectedHash) ?? RemoteHistory.FirstOrDefault();
         await LoadRemoteFilesCoreAsync();
         UpdateVersionChoices(same);
-        if (ActiveTab == 3) await LoadVersionFilesCoreAsync();
+        if (ActiveTab == VersionTab) await LoadVersionFilesCoreAsync();
         NotifyVersionState();
     }
 

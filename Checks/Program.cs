@@ -196,7 +196,7 @@ internal static partial class Program
                 if (viewModel.Repository is null) throw new InvalidOperationException("界面未加载真实仓库。");
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 SaveScreenshot(window, screenshotPath);
-                viewModel.ActiveTab = 1;
+                viewModel.ActiveTab = MainViewModel.HistoryTab;
                 await WaitForIdleAsync(viewModel, "切换到历史页");
                 await viewModel.ShowCommitAsync();
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
@@ -214,7 +214,7 @@ internal static partial class Program
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 if (viewModel.Readme is null || viewModel.Comparison is not null) throw new InvalidOperationException("说明页未读取 README。");
                 SaveScreenshot(window, Path.ChangeExtension(screenshotPath, "readme.png"));
-                viewModel.ActiveTab = 0;
+                viewModel.ActiveTab = MainViewModel.ChangesTab;
                 await WaitForIdleAsync(viewModel, "切换到改动页");
                 await viewModel.ShowActiveTabAsync();
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);

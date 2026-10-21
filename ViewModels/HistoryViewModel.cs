@@ -9,21 +9,21 @@ public sealed partial class MainViewModel
     {
         Comparison = ActiveTab switch
         {
-            0 => SelectedChange is null ? null : await Git.CompareWorkingAsync(Root, SelectedChange, _hasHead),
-            1 => SelectedCommit is null || SelectedHistoryFile is null ? null : await Git.CompareHistoryAsync(Root, SelectedCommit, SelectedHistoryFile),
-            2 => SelectedRemoteCommit is null || SelectedRemoteFile is null ? null : await Git.CompareHistoryAsync(Root, SelectedRemoteCommit, SelectedRemoteFile),
+            ChangesTab => SelectedChange is null ? null : await Git.CompareWorkingAsync(Root, SelectedChange, _hasHead),
+            HistoryTab => SelectedCommit is null || SelectedHistoryFile is null ? null : await Git.CompareHistoryAsync(Root, SelectedCommit, SelectedHistoryFile),
+            RemoteTab => SelectedRemoteCommit is null || SelectedRemoteFile is null ? null : await Git.CompareHistoryAsync(Root, SelectedRemoteCommit, SelectedRemoteFile),
             ReadmeTab => null,
             _ => await ReadVersionComparisonCoreAsync()
         };
     }
 
-    public Task ShowChangeAsync() => !HasRepository ? Task.CompletedTask : ActiveTab is 1 or 2
-        ? NavigateHistoryAsync(ActiveTab == 2, loadFiles: false) : ExecuteAsync("正在读取文件差异", LoadComparisonCoreAsync);
-    public Task ShowActiveTabAsync() => !HasRepository ? Task.CompletedTask : ActiveTab is 1 or 2
-        ? NavigateHistoryAsync(ActiveTab == 2, loadFiles: true) : ExecuteAsync("正在读取版本", async () =>
+    public Task ShowChangeAsync() => !HasRepository ? Task.CompletedTask : ActiveTab is HistoryTab or RemoteTab
+        ? NavigateHistoryAsync(ActiveTab == RemoteTab, loadFiles: false) : ExecuteAsync("正在读取文件差异", LoadComparisonCoreAsync);
+    public Task ShowActiveTabAsync() => !HasRepository ? Task.CompletedTask : ActiveTab is HistoryTab or RemoteTab
+        ? NavigateHistoryAsync(ActiveTab == RemoteTab, loadFiles: true) : ExecuteAsync("正在读取版本", async () =>
     {
-        if (ActiveTab == 2) await LoadRemoteFilesCoreAsync();
-        if (ActiveTab == 3) await LoadVersionFilesCoreAsync();
+        if (ActiveTab == RemoteTab) await LoadRemoteFilesCoreAsync();
+        if (ActiveTab == VersionTab) await LoadVersionFilesCoreAsync();
         if (ActiveTab == ReadmeTab) Readme = await ReadmeReader.ReadAsync(Root);
         await LoadComparisonCoreAsync();
     });
@@ -34,7 +34,7 @@ public sealed partial class MainViewModel
         if (SelectedCommit is null) throw new InvalidOperationException("请先选择历史版本。");
         if (fileOnly && SelectedHistoryFile is null) throw new InvalidOperationException("请先选择文件。");
         string? checkpoint = await Git.RestoreVersionAsync(Root, SelectedCommit.Hash, fileOnly ? SelectedHistoryFile!.Path : null);
-        ActiveTab = 0;
+        ActiveTab = ChangesTab;
         await RefreshCoreAsync();
         Status = checkpoint is null ? "已恢复，检查改动后可提交为新版本" : "已恢复，原修改已保存在“恢复点”";
     });

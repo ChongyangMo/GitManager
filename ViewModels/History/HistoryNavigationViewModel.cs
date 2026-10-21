@@ -40,7 +40,7 @@ public sealed partial class MainViewModel
 
     private bool IsCurrentHistoryRequest(long generation, string root, string hash, bool remote)
         => !_disposed && !IsBusy && generation == _historyNavigationGeneration && Repository?.Path == root
-            && ActiveTab == (remote ? 2 : 1) && (remote ? SelectedRemoteCommit : SelectedCommit)?.Hash == hash;
+            && ActiveTab == (remote ? RemoteTab : HistoryTab) && (remote ? SelectedRemoteCommit : SelectedCommit)?.Hash == hash;
 
     private async Task NavigateHistoryAsync(bool remote, bool loadFiles)
     {

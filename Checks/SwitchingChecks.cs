@@ -69,13 +69,16 @@ internal static partial class Program
                 await File.WriteAllTextAsync(Path.Combine(empty, "真实改动.txt"), "第一次修改\n");
                 await viewModel.OpenRepositoryAsync(empty);
                 while (viewModel.IsWorkspaceRefreshing) await Task.Delay(15);
-                Check(viewModel.Changes.Any(item => item.Path == "真实改动.txt") && viewModel.Comparison?.After.Contains("第一次修改") == true, "后台校验可发现缓存之后新增的真实文件");
+                Check(viewModel.ActiveTab == MainViewModel.ReadmeTab && viewModel.Changes.Any(item => item.Path == "真实改动.txt"), "点击仓库先显示说明页，后台校验可发现缓存之后新增的真实文件");
+                await ShowChangesTabAsync(viewModel);
+                Check(viewModel.Comparison?.After.Contains("第一次修改") == true, "改动页显示新增文件的真实差异");
                 await viewModel.OpenRepositoryAsync(repositories[0]);
                 await File.WriteAllTextAsync(Path.Combine(empty, "真实改动.txt"), "第二次修改\n");
                 await viewModel.OpenRepositoryAsync(empty);
-                Check(viewModel.Comparison?.After.Contains("第一次修改") == true, "切换立即显示上次真实读取的内容");
+                Check(viewModel.ActiveTab == MainViewModel.ReadmeTab && viewModel.Changes.Any(item => item.Path == "真实改动.txt"), "再次点击仓库仍先显示说明页，并立即显示上次读取的改动");
                 while (viewModel.IsWorkspaceRefreshing) await Task.Delay(15);
-                Check(viewModel.Comparison?.After.Contains("第二次修改") == true, "后台校验会更新当前文件差异");
+                await ShowChangesTabAsync(viewModel);
+                Check(viewModel.Comparison?.After.Contains("第二次修改") == true, "后台校验后改动页显示最新文件差异");
                 await Git.SaveRemoteAsync(empty, Path.Combine(empty, "不存在的远程.git"));
                 await viewModel.OpenRepositoryAsync(empty);
                 deadline = DateTimeOffset.UtcNow.AddSeconds(5);
@@ -87,5 +90,12 @@ internal static partial class Program
         };
         app.Run();
         if (failure is not null) throw new InvalidOperationException("仓库切换检查失败。", failure);
+    }
+
+    private static async Task ShowChangesTabAsync(MainViewModel viewModel)
+    {
+        viewModel.ActiveTab = MainViewModel.ChangesTab;
+        await WaitForIdleAsync(viewModel, "切换到改动页");
+        await viewModel.ShowActiveTabAsync();
     }
 }

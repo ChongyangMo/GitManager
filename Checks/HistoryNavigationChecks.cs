@@ -28,7 +28,7 @@ internal static partial class Program
             try
             {
                 await vm.InitializeAsync(repository);
-                vm.ActiveTab = 1;
+                vm.ActiveTab = MainViewModel.HistoryTab;
                 await WaitForIdleAsync(vm, "切换到历史页");
                 var commits = vm.History.Take(4).ToArray();
                 Check(commits.Length >= 2, "真实仓库有可切换的历史版本");

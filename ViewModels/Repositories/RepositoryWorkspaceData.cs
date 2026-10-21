@@ -6,7 +6,7 @@ namespace GitManager.ViewModels;
 public sealed partial class MainViewModel
 {
     private sealed record WorkspaceSelection(
-        int Tab = 0, string? Change = null, string? Commit = null, string? HistoryFile = null,
+        int Tab = ReadmeTab, string? Change = null, string? Commit = null, string? HistoryFile = null,
         RemoteBranch? RemoteBranch = null, string? RemoteCommit = null, string? RemoteFile = null,
         VersionChoice? Before = null, VersionChoice? After = null, bool FollowHeads = true, string? VersionFile = null,
         string? LocalBranch = null);

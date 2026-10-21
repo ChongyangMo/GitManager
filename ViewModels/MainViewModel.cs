@@ -24,6 +24,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private HistoryFile? _selectedHistoryFile;
     private FileComparison? _comparison;
     private List<DiffRow> _diffRows = [];
+    // 工作区标签页顺序，与 MainWindow.xaml 中 TabItem 的排列一致。
+    public const int ReadmeTab = 0, ChangesTab = 1, HistoryTab = 2, RemoteTab = 3, VersionTab = 4;
     private int _activeTab;
     public bool IsBusy { get => _busy; private set { Set(ref _busy, value); Notify(nameof(IsIdle)); Notify(nameof(CanOperate)); UpdateBusyFeedback(); } }
     public bool IsIdle => !IsBusy;

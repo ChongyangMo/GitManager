@@ -38,6 +38,8 @@ public sealed partial class MainViewModel
             if (_workspaceCache.TryGetValue(bookmark.Path, out var cached))
             {
                 ApplyWorkspace(cached);
+                // 点击仓库时总是先显示说明页，不沿用上次停留的标签页。
+                ActiveTab = ReadmeTab;
                 SetWorkspaceLoading(false);
             }
             else
