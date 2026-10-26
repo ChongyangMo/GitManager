@@ -31,8 +31,8 @@
         <Setter Property="Margin" Value="4,1" />
         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
             <Grid Background="Transparent">
-                <Border Background="{DynamicResource RowHoverBrush}" CornerRadius="6" Opacity="0" IsHitTestVisible="False" motion:InteractionMotion.IsActive="{Binding IsMouseOver, RelativeSource={RelativeSource TemplatedParent}}" />
-                <Border x:Name="Selection" Background="{DynamicResource SelectBrush}" CornerRadius="6" Opacity="0" IsHitTestVisible="False" motion:InteractionMotion.IsActive="{Binding IsSelected, RelativeSource={RelativeSource TemplatedParent}}" />
+                <Border Background="{DynamicResource RowHoverBrush}" CornerRadius="6" IsHitTestVisible="False" motion:InteractionMotion.IsActive="{Binding IsMouseOver, RelativeSource={RelativeSource TemplatedParent}}" />
+                <Border x:Name="Selection" Background="{DynamicResource SelectBrush}" CornerRadius="6" IsHitTestVisible="False" motion:InteractionMotion.IsActive="{Binding IsSelected, RelativeSource={RelativeSource TemplatedParent}}" />
                 <Border x:Name="Row" BorderBrush="Transparent" BorderThickness="1" CornerRadius="6" IsHitTestVisible="False" />
                 <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
             </Grid>
@@ -82,9 +82,9 @@
         <Setter Property="Padding" Value="16,12" />
         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabItem">
             <Grid Background="Transparent">
-                <Border Background="{DynamicResource RowHoverBrush}" CornerRadius="4,4,0,0" Opacity="0" IsHitTestVisible="False" motion:InteractionMotion.IsActive="{Binding IsMouseOver, RelativeSource={RelativeSource TemplatedParent}}" />
+                <Border Background="{DynamicResource RowHoverBrush}" CornerRadius="4,4,0,0" IsHitTestVisible="False" motion:InteractionMotion.IsActive="{Binding IsMouseOver, RelativeSource={RelativeSource TemplatedParent}}" />
                 <Border BorderThickness="0,0,0,2" x:Name="Tab" Padding="{TemplateBinding Padding}" Background="Transparent"><ContentPresenter ContentSource="Header" /></Border>
-                <Border x:Name="Indicator" Background="{DynamicResource AccentBrush}" Height="2" VerticalAlignment="Bottom" Opacity="0" IsHitTestVisible="False" motion:InteractionMotion.IsIndicatorActive="{Binding IsSelected, RelativeSource={RelativeSource TemplatedParent}}" />
+                <Border x:Name="Indicator" Background="{DynamicResource AccentBrush}" Height="2" VerticalAlignment="Bottom" IsHitTestVisible="False" motion:InteractionMotion.IsIndicatorActive="{Binding IsSelected, RelativeSource={RelativeSource TemplatedParent}}" />
             </Grid>
             <ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Foreground" Value="{DynamicResource AccentBrush}" /></Trigger></ControlTemplate.Triggers>
         </ControlTemplate></Setter.Value></Setter>

@@ -204,7 +204,7 @@
                                 VerticalAlignment="Center">
                             <Path x:Name="Mark" Data="M3,7 L6,10 L11,3.5" Stroke="White" StrokeThickness="2"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
-                                  Opacity="0" motion:InteractionMotion.IsIndicatorActive="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}, TargetNullValue=False}" />
+                                  motion:InteractionMotion.IsIndicatorActive="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}, TargetNullValue=False}" />
                         </Border>
                         <ContentPresenter Margin="6,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True" />
                     </StackPanel>
@@ -238,7 +238,7 @@
                     <StackPanel Orientation="Horizontal" Background="Transparent">
                         <Grid Width="16" Height="16" VerticalAlignment="Center" motion:InteractionMotion.IsPressed="{Binding IsPressed, RelativeSource={RelativeSource TemplatedParent}}">
                             <Ellipse x:Name="Ring" StrokeThickness="1" Stroke="{DynamicResource ControlBorderBrush}" Fill="{DynamicResource CardBrush}" />
-                            <Ellipse x:Name="Dot" Width="8" Height="8" Fill="{DynamicResource AccentBrush}" Opacity="0" motion:InteractionMotion.IsIndicatorActive="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}, TargetNullValue=False}" />
+                            <Ellipse x:Name="Dot" Width="8" Height="8" Fill="{DynamicResource AccentBrush}" motion:InteractionMotion.IsIndicatorActive="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}, TargetNullValue=False}" />
                         </Grid>
                         <ContentPresenter Margin="6,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True" />
                     </StackPanel>

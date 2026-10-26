@@ -13,12 +13,12 @@ public static class InteractionMotion
     public static void SetIsPressed(DependencyObject element, bool value) => element.SetValue(IsPressedProperty, value);
 
     public static readonly DependencyProperty IsActiveProperty = DependencyProperty.RegisterAttached(
-        "IsActive", typeof(bool), typeof(InteractionMotion), new PropertyMetadata(false, ActiveChanged));
+        "IsActive", typeof(bool), typeof(InteractionMotion), new PropertyMetadata(true, ActiveChanged));
     public static bool GetIsActive(DependencyObject element) => (bool)element.GetValue(IsActiveProperty);
     public static void SetIsActive(DependencyObject element, bool value) => element.SetValue(IsActiveProperty, value);
 
     public static readonly DependencyProperty IsIndicatorActiveProperty = DependencyProperty.RegisterAttached(
-        "IsIndicatorActive", typeof(bool), typeof(InteractionMotion), new PropertyMetadata(false, IndicatorChanged));
+        "IsIndicatorActive", typeof(bool), typeof(InteractionMotion), new PropertyMetadata(true, IndicatorChanged));
     public static bool GetIsIndicatorActive(DependencyObject element) => (bool)element.GetValue(IsIndicatorActiveProperty);
     public static void SetIsIndicatorActive(DependencyObject element, bool value) => element.SetValue(IsIndicatorActiveProperty, value);
 
