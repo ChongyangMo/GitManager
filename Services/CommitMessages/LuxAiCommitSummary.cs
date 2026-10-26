@@ -30,11 +30,19 @@ public sealed partial class CommitMessageGenerator
         string? message = cache.Read(key);
         bool cached = message is not null;
         var routing = new RepositorySummaryRouting(git, settings);
+        QwenCostEstimate cost = QwenCostEstimate.Local;
         await routing.EnsureAsync([root], SummaryModelTarget.GroupAi, token);
         if (!cached)
         {
             using var client = new LuxAiClient(options);
-            message = await client.GenerateAsync(content.Text, token);
+            var reply = await CommitBatchSummary.GenerateAsync(content, options.MaxInputCharacters, async (text, prompt, cancellation) =>
+            {
+                await routing.EnsureAsync([root], SummaryModelTarget.GroupAi, cancellation);
+                return new(await client.GenerateAsync(text, cancellation, prompt), "集团 AI",
+                    new(null, null, "集团接口未返回模型型号、完整用量或费用，未作估算"));
+            }, token);
+            message = reply.Message;
+            cost = reply.Cost;
         }
         var current = await reader.ReadAsync(root, selected, limits, token);
         if (content.Fingerprint != current.Fingerprint) throw new InvalidOperationException("总结期间文件内容已变化，请重新总结或提交。");
@@ -43,6 +51,6 @@ public sealed partial class CommitMessageGenerator
         if (!cached) cache.Save(key, message!);
         else AppLog.Write("已复用集团 AI 总结缓存，本次未调用接口");
         return new(message!, cached ? "集团 AI 本地缓存" : "集团 AI", content.Fingerprint,
-            cached ? QwenCostEstimate.Local : new(null, null, "集团接口未返回模型型号、完整用量或费用，未作估算"));
+            cost);
     }
 }

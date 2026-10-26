@@ -34,7 +34,9 @@ public sealed partial class CommitMessageGenerator(GitRepositoryService git, Set
         QwenCostEstimate cost = QwenCostEstimate.Local;
         if (!cached)
         {
-            var reply = await new PublicModelSummary(git, settings).GenerateAsync([root], content.Text, token);
+            var provider = new PublicModelSummary(git, settings);
+            var reply = await CommitBatchSummary.GenerateAsync(content, options.MaxInputCharacters,
+                (text, prompt, cancellation) => provider.GenerateAsync([root], text, cancellation, prompt), token);
             (message, cost, source) = (reply.Message, reply.Cost, reply.Source);
             cacheKey = source switch { "Claude" => claudeKey, "Codex" => codexKey, _ => qwenKey! };
         }

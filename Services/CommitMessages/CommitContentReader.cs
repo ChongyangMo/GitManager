@@ -7,7 +7,10 @@ using GitManager.Models;
 
 namespace GitManager.Services.CommitMessages;
 
-public sealed record CommitContent(string Text, string Fingerprint);
+public sealed record CommitContent(string Text, string Fingerprint, IReadOnlyList<string>? Batches = null)
+{
+    public IReadOnlyList<string> Parts => Batches ?? [Text];
+}
 
 public sealed class CommitContentReader(GitRepositoryService git)
 {
@@ -16,10 +19,9 @@ public sealed class CommitContentReader(GitRepositoryService git)
     {
         var source = await new LocalCommitSummaryReader(git).ReadAsync(root, selected, token);
         var head = await git.Runner.RunAsync(root, ["rev-parse", "--verify", "HEAD"], true, token);
-        var text = new StringBuilder("请总结以下真实 Git 改动。\n");
+        var batches = new CommitContentBatchBuilder(options);
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         AppendHash(source.Fingerprint);
-        int omitted = 0;
         foreach (var file in source.Files)
         {
             token.ThrowIfCancellationRequested();
@@ -41,12 +43,9 @@ public sealed class CommitContentReader(GitRepositoryService git)
             string patch;
             bool tracked = file.Action != "新增" || file.Added.HasValue;
             if (file.Binary) patch = "二进制文件，省略内容。";
-            else if (text.Length + details.Length > options.MaxInputCharacters - 150 ||
-                (file.Added ?? 0) + (long)(file.Removed ?? 0) > 6000)
-                patch = "文件差异较长，省略内容。";
             else if (!tracked || head.ExitCode != 0)
                 patch = isLink ? "符号链接目标：" + new FileInfo(path).LinkTarget
-                    : isFile ? await ReadNewFileAsync(path, options.MaxFileCharacters, token) : "文件内容不可读取。";
+                    : isFile ? await ReadNewFileAsync(path, token) : "文件内容不可读取。";
             else
             {
                 var paths = file.OriginalPath is null ? new[] { file.Path } : new[] { file.OriginalPath, file.Path };
@@ -59,16 +58,10 @@ public sealed class CommitContentReader(GitRepositoryService git)
                 patch = string.Join('\n', patch.Replace("\r\n", "\n").Split('\n')
                     .Where(line => !line.StartsWith("index ", StringComparison.Ordinal)));
             }
-            if (patch.Length > options.MaxFileCharacters) patch = patch[..options.MaxFileCharacters] + "\n[文件内容已截断]";
-            string block = "\n文件：" + details + "\n差异或新增内容：\n" + patch
-                + "\n统计：" + JsonSerializer.Serialize(new { file.Added, file.Removed, file.Binary }) + "\n";
-            int available = options.MaxInputCharacters - text.Length - 100;
-            if (available <= details.Length + 20) { omitted++; continue; }
-            if (block.Length > available) block = block[..Math.Max(0, available - 20)] + "\n[内容已截断]\n";
-            text.Append(block);
+            batches.AddFile(details, JsonSerializer.Serialize(new { file.Added, file.Removed, file.Binary }), patch);
         }
-        if (omitted > 0) text.Append($"\n另有 {omitted} 个文件因输入长度限制未展示，不推断其具体改动。\n");
-        return new(text.ToString(), Convert.ToHexString(hash.GetHashAndReset()));
+        var parts = batches.Build();
+        return new(string.Join('\n', parts), Convert.ToHexString(hash.GetHashAndReset()), parts);
 
         void AppendHash(string value)
         {
@@ -77,16 +70,18 @@ public sealed class CommitContentReader(GitRepositoryService git)
         }
     }
 
-    private static async Task<string> ReadNewFileAsync(string path, int limit, CancellationToken token)
+    private static async Task<string> ReadNewFileAsync(string path, CancellationToken token)
     {
         try
         {
             using var reader = new StreamReader(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete),
                 new UTF8Encoding(false, true), detectEncodingFromByteOrderMarks: true);
-            var buffer = new char[limit + 1];
+            // 先检查文件开头，避免将明显的二进制文件完整读为文本。
+            var buffer = new char[4096];
             int count = await reader.ReadBlockAsync(buffer.AsMemory(), token);
             if (buffer.AsSpan(0, count).Contains('\0')) return "二进制文件，省略内容。";
-            return new string(buffer, 0, Math.Min(limit, count)) + (count > limit ? "\n[新增文件内容已截断]" : "");
+            string text = new string(buffer, 0, count) + await reader.ReadToEndAsync(token);
+            return text.Contains('\0') ? "二进制文件，省略内容。" : text;
         }
         catch (DecoderFallbackException) { return "文件不是可识别的文本，省略内容。"; }
     }

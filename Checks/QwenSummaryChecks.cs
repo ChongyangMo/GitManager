@@ -53,7 +53,8 @@ internal static partial class Program
                 await File.WriteAllTextAsync(Path.Combine(root, "新增.txt"), new string('字', 3000));
                 options.MaxFileCharacters = 256;
                 var limited = await reader.ReadAsync(root, files, options, default);
-                Check(limited.Text.Contains("截断") && limited.Text.Length < options.MaxInputCharacters, "长文件内容按配置截断并明确标记");
+                Check(!limited.Text.Contains("已截断") && limited.Text.Count(value => value == '字') == 3000
+                    && limited.Parts.All(part => part.Length <= options.MaxInputCharacters), "长文件完整分片，每批遵守输入上限");
                 Check((await Runner.RunAsync(root, ["rev-parse", "HEAD"])).Output == head
                     && (await Runner.RunAsync(root, ["diff", "--cached", "--raw", "-z"])).Output == index, "读取总结输入不修改提交和暂存区");
                 var cache = new CommitSummaryCache(Path.Combine(root, "cache"));
