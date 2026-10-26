@@ -11,7 +11,7 @@
                         <StackPanel><Button Content="添加仓库" Style="{StaticResource WorkspaceButton}" HorizontalAlignment="Stretch" Click="AddMenuClicked"><Button.ContextMenu><ContextMenu><MenuItem Header="添加本地仓库" Click="AddRepositoryClicked" /><MenuItem Header="新建仓库" Click="CreateRepositoryClicked" /><MenuItem Header="克隆仓库" Click="CloneRepositoryClicked" /></ContextMenu></Button.ContextMenu></Button><Button Content="服务云" Style="{StaticResource WorkspaceButton}" HorizontalAlignment="Stretch" Margin="0,8,0,0" Click="ServiceCloudClicked" /></StackPanel>
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Bottom" Margin="12,12,12,16"><Button Content="设置" Style="{StaticResource QuietButton}" HorizontalAlignment="Stretch" Click="SettingsClicked" /></StackPanel>
-                    <ListBox x:Name="RepositoryList" ItemsSource="{Binding Repositories}" SelectedItem="{Binding Repository, Mode=OneWay}" Style="{StaticResource WorkspaceList}" SelectionChanged="RepositoryChanged">
+                    <ListBox x:Name="RepositoryList" ItemsSource="{Binding Repositories}" SelectedItem="{Binding Repository, Mode=OneWay}" Style="{StaticResource WorkspaceList}" SelectionChanged="RepositoryChanged" ScrollViewer.CanContentScroll="False" ClipToBounds="True" Padding="0,0,0,6">
                         <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem" BasedOn="{StaticResource WorkspaceRow}">
                             <Setter Property="ContextMenu"><Setter.Value><ContextMenu/></Setter.Value></Setter>
                             <EventSetter Event="ContextMenuOpening" Handler="RepositoryContextMenuOpening"/>
