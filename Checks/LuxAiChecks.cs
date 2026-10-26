@@ -27,6 +27,7 @@ internal static partial class Program
                     Console.WriteLine($"{name} {claim}：{DateTimeOffset.FromUnixTimeSeconds(seconds):O}");
         }
         Console.WriteLine("当前需要续期：" + LuxAiAuthentication.NeedsRenewal(session));
+        Console.WriteLine("已保存自动登录账号：" + (LuxAiAccountCredentials.Read(options) is not null));
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(25));
         using var client = new LuxAiClient(options);
         await client.ValidateSessionAsync(session, timeout.Token);
@@ -102,7 +103,8 @@ internal static partial class Program
         await File.WriteAllTextAsync(report, JsonSerializer.Serialize(new
         {
             Time = DateTimeOffset.Now, Enabled = options.Enabled, LoginVerified = true, RenewalVerified = true,
-            EmployeeCode = renewed.EmployeeCode, CredentialStorage = "Windows 凭据管理器", PasswordStored = false
+            EmployeeCode = renewed.EmployeeCode, CredentialStorage = "Windows 凭据管理器",
+            PasswordStored = LuxAiAccountCredentials.Read(options) is not null
         }, new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
     }
 

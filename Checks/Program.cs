@@ -31,6 +31,7 @@ internal static partial class Program
             if (args is ["--luxai-session"]) { RunLuxAiSessionAsync().GetAwaiter().GetResult(); return 0; }
             if (args is ["--luxai-state"]) { InspectLuxAiSessionAsync().GetAwaiter().GetResult(); return 0; }
             if (args is ["--luxai-maintenance"]) { RunLuxAiMaintenanceAsync().GetAwaiter().GetResult(); return 0; }
+            if (args is ["--luxai-relogin"]) { RunLuxAiRecoveryAsync().GetAwaiter().GetResult(); return 0; }
             if (args.Length >= 3 && args[0] == "--luxai-live") { RunLuxAiLiveAsync(args[1], args[2..]).GetAwaiter().GetResult(); return 0; }
             if (args.Length == 1 && args[0] == "--repository-paths") { RunRepositoryPathChecksAsync().GetAwaiter().GetResult(); return 0; }
             if (args.Length == 1 && args[0] == "--repository-copies") { RunRepositoryCopiesChecks(); return 0; }

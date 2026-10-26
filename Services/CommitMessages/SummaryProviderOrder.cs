@@ -25,7 +25,8 @@ public static class SummaryProviderOrder
         try { hasKey = QwenCredentials.Read(qwen) is { Length: > 0 }; }
         catch (InvalidOperationException) { hasKey = false; }
         string internalState = luxAi is { Enabled: true }
-            ? "集团 AI · " + (LuxAi.LuxAiCredentials.Read(luxAi) is not null ? "已连接" : "待登录")
+            ? "集团 AI · " + (LuxAi.LuxAiAccountCredentials.Read(luxAi) is not null ? "断线自动登录"
+                : LuxAi.LuxAiCredentials.Read(luxAi) is not null ? "已连接" : "待登录")
             : "本地规则（集团 AI 未启用）";
         return $"内网：{internalState}\n"
             + $"外网：Claude（{claudeState}） → Codex（{codex.Model} · {codexState}） → 千问（{(hasKey ? "已保存 API Key" : "未填写 API Key")}）";

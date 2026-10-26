@@ -8,7 +8,8 @@ public sealed partial class MainViewModel
     public Task SaveLuxAiSettingsAsync(LuxAiOptions options) => ExecuteAsync("正在保存集团 AI 设置", () =>
     {
         _ = options.Endpoint();
-        if (options.Enabled && LuxAiCredentials.Read(options) is null) throw new LuxAiLoginRequiredException();
+        if (options.Enabled && LuxAiCredentials.Read(options) is null && LuxAiAccountCredentials.Read(options) is null)
+            throw new LuxAiLoginRequiredException();
         CancelCommitSummary();
         var previous = Settings.Value.LuxAi;
         Settings.Value.LuxAi = options;
