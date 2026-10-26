@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
@@ -18,7 +19,7 @@ public sealed partial class LuxAiClient
             ? await RefreshAsync(session, token) : session;
     }
 
-    // 用已保存的真实账号重新登录，也供诊断断线恢复使用，不修改或删除现有会话。
+    // 用已保存的真实账号重新登录，也供诊断断线恢复使用，不预先清除现有会话。
     public Task<LuxAiSession> ReloginAsync(CancellationToken token) => RefreshAsync(null, token, signIn: true);
 
     private async Task<LuxAiSession> RefreshAsync(LuxAiSession? previous, CancellationToken token, bool signIn = false)
@@ -74,6 +75,8 @@ public sealed partial class LuxAiClient
         try
         {
             using var response = await _http.SendAsync(request, token);
+            if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+                throw new LuxAiLoginRequiredException();
             using var body = await ReadJsonAsync(response, token);
             if (LoginDenied(body.RootElement)) throw new LuxAiLoginRequiredException();
             CheckBody(body.RootElement);
