@@ -1,19 +1,18 @@
+using System.Diagnostics;
 using System.Windows;
-using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
 namespace GitManager.Views.Motion;
 
-// 仓库页面进入动效：直接显示新内容，仅在绑定更新后的首帧做轻微过渡。
+// 页面位置始终固定；仅单次导航做极轻的淡入，连续切换保持稳定显示。
 public static class PageTransition
 {
     private sealed class State
     {
-        public TranslateTransform Offset { get; } = new();
         public DispatcherOperation? Pending { get; set; }
         public long Generation { get; set; }
-        public bool Running { get; set; }
+        public long LastNavigation { get; set; }
     }
 
     public static readonly DependencyProperty KeyProperty = DependencyProperty.RegisterAttached(
@@ -30,13 +29,15 @@ public static class PageTransition
         {
             state = new State();
             element.SetValue(StateProperty, state);
-            element.RenderTransform = state.Offset;
             element.Unloaded += Unloaded;
         }
         long generation = ++state.Generation;
+        long now = Stopwatch.GetTimestamp();
+        bool rapid = state.LastNavigation != 0 && Stopwatch.GetElapsedTime(state.LastNavigation, now) < TimeSpan.FromMilliseconds(200);
+        state.LastNavigation = now;
         state.Pending?.Abort();
         state.Pending = null;
-        if (args.NewValue is null || !element.IsLoaded || !SystemParameters.ClientAreaAnimation)
+        if (rapid || args.NewValue is null || !element.IsLoaded || !SystemParameters.ClientAreaAnimation)
         {
             Reset(element, state);
             return;
@@ -47,34 +48,24 @@ public static class PageTransition
             state.Pending = null;
             if (generation != state.Generation || !element.IsLoaded || !element.IsVisible) return;
             if (!SystemParameters.ClientAreaAnimation) { Reset(element, state); return; }
-            bool continuing = state.Running;
-            double opacity = continuing ? element.Opacity : 0.84;
-            double offset = continuing ? state.Offset.Y : 6;
             Reset(element, state);
-            state.Running = true;
-            var fade = Animation(opacity, 1);
+            var fade = new DoubleAnimation(0.96, 1, TimeSpan.FromMilliseconds(100))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+                FillBehavior = FillBehavior.Stop
+            };
             fade.Completed += (_, _) =>
             {
                 if (generation == state.Generation) Reset(element, state);
             };
             element.BeginAnimation(UIElement.OpacityProperty, fade, HandoffBehavior.SnapshotAndReplace);
-            state.Offset.BeginAnimation(TranslateTransform.YProperty, Animation(offset, 0), HandoffBehavior.SnapshotAndReplace);
         });
     }
-
-    private static DoubleAnimation Animation(double from, double to) => new(from, to, TimeSpan.FromMilliseconds(200))
-    {
-        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-        FillBehavior = FillBehavior.Stop
-    };
 
     private static void Reset(FrameworkElement element, State state)
     {
         element.BeginAnimation(UIElement.OpacityProperty, null);
-        state.Offset.BeginAnimation(TranslateTransform.YProperty, null);
         element.SetValue(UIElement.OpacityProperty, 1d);
-        state.Offset.Y = 0;
-        state.Running = false;
     }
 
     private static void Unloaded(object sender, RoutedEventArgs args)

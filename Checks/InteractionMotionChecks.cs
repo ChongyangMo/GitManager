@@ -36,6 +36,7 @@ internal static partial class Program
                 var tabs = (TabControl)window.FindName("WorkspaceTabs");
                 var page = (FrameworkElement)window.FindName("RepositoryPage");
                 bool sawPageTransition = false;
+                bool pageStayedStill = true;
                 VerifySelectionVisuals(list, tabs);
                 for (int pass = 0; pass < 2; pass++)
                 {
@@ -44,6 +45,7 @@ internal static partial class Program
                         list.SetCurrentValue(ListBox.SelectedItemProperty, bookmark);
                         await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
                         sawPageTransition |= page.HasAnimatedProperties;
+                        pageStayedStill &= page.RenderTransform.Value.IsIdentity && page.Opacity >= 0.959;
                         await Task.Delay(25);
                     }
                     foreach (TabItem tab in tabs.Items)
@@ -56,10 +58,11 @@ internal static partial class Program
                     VerifySelectionVisuals(list, tabs);
                     Check(ReferenceEquals(list.SelectedItem, model.Repository) && tabs.SelectedIndex == model.ActiveTab,
                         "快速切换后高亮、实际仓库及标签选择保持一致");
-                    Check(page.Opacity == 1 && page.RenderTransform is TranslateTransform { Y: 0 } && !page.HasAnimatedProperties,
+                    Check(page.Opacity == 1 && page.RenderTransform.Value.IsIdentity && !page.HasAnimatedProperties,
                         "页面过渡结束后完整显示，连续切换不残留透明度或位移");
                 }
                 Check(!SystemParameters.ClientAreaAnimation || sawPageTransition, "仓库切换实际播放页面过渡，遵循系统动画设置");
+                Check(pageStayedStill, "整个切换过程页面位置固定，不移动或大幅闪烁");
                 model.ActiveTab = MainViewModel.ReadmeTab;
                 await model.ShowActiveTabAsync();
                 await WaitWorkspaceReadsAsync(model);
