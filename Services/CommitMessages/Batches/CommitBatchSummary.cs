@@ -10,6 +10,7 @@ public static class CommitBatchSummary
     {
         var parts = content.Parts;
         if (parts.Count == 0) throw new InvalidOperationException("没有可总结的改动内容。");
+        if (parts.Any(part => part.Length > limit)) throw new InvalidOperationException("总结片段超过模型输入上限。");
         if (parts.Count == 1) return await generate(parts[0], QwenPrompt.System, token);
         string partialPrompt = QwenPrompt.System + $"\n本次输入是整体改动的一部分，只记录这一部分的事实，供后续合并。不要输出源码或省略提示，控制在 {Math.Min(800, Math.Max(160, limit / 4))} 字以内。";
         var replies = new List<PublicModelReply>();
