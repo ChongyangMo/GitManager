@@ -48,7 +48,10 @@ public sealed partial class MainViewModel
         await Task.WhenAll(discovery, _workspaceRefreshTask ?? Task.CompletedTask);
         if (_disposed) return;
         if (!HasRepository && !IsBusy && Repositories.FirstOrDefault() is { } first)
+        {
             await OpenRepositoryAsync(first.Path);
+            if (_workspaceRefreshTask is { } workspace) await workspace;
+        }
         _ = RefreshRepositoryPushIndicatorsAsync();
         if (HasRepository && !IsBusy) ReloadGitHubVisibility();
     }
@@ -59,10 +62,11 @@ public sealed partial class MainViewModel
         {
             string root = await Git.OpenAsync(path, _lifetimeCancellation.Token);
             if (_disposed || IsBusy || generation != _repositoryOpenGeneration) return;
-            if (!Repositories.Any(item => string.Equals(item.Path, root, StringComparison.OrdinalIgnoreCase)))
-                Repositories.Add(new RepositoryBookmark(root));
+            var bookmark = Repositories.FirstOrDefault(item => string.Equals(item.Path, root, StringComparison.OrdinalIgnoreCase));
+            if (bookmark is null) { bookmark = new RepositoryBookmark(root); Repositories.Add(bookmark); }
             Settings.Value.IgnoredRepositories.RemoveAll(item => string.Equals(item, root, StringComparison.OrdinalIgnoreCase));
             await OpenRepositoryAsync(root);
+            _ = RefreshRepositoryNameAsync(bookmark);
         }
         catch (OperationCanceledException) when (_disposed) { }
         catch (Exception ex)

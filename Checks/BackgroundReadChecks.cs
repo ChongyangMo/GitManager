@@ -67,7 +67,7 @@ internal static partial class Program
                 model.ActiveTab = MainViewModel.ReadmeTab;
                 var readme = model.ShowActiveTabAsync();
                 Check(model.IsIdle, "说明读取不占用前台锁");
-                list.SelectedItem = model.Repositories.First(item => item.Path == repositories[1]);
+                list.SetCurrentValue(ListBox.SelectedItemProperty, model.Repositories.First(item => item.Path == repositories[1]));
                 Check(model.Repository?.Path == repositories[1] && model.CanOperate, "扫描及读取期间可立即切换到另一仓库");
                 await Task.WhenAll(scan, refresh, fetch, readme);
                 await WaitWorkspaceReadsAsync(model);

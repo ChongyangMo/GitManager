@@ -4,14 +4,13 @@ namespace GitManager.ViewModels;
 
 public sealed partial class MainViewModel
 {
-    // 操作或首次加载超过该时长才显示忙碌外观，短操作不闪烁。
+    // 写操作超过该时长才显示忙碌外观，后台读取不触发全局灰显。
     private static readonly TimeSpan BusyFeedbackDelay = TimeSpan.FromMilliseconds(300);
     private DispatcherTimer? _busyFeedbackTimer;
     private bool _busyFeedbackVisible;
     private bool IsLocked => _busy;
     public bool IsBusyFeedbackDeferred => IsLocked && !_busyFeedbackVisible;
     public bool IsBusyProgressVisible => _busy && _busyFeedbackVisible;
-    public bool IsWorkspaceLoadingHintVisible => _workspaceLoading && _busyFeedbackVisible;
 
     private void UpdateBusyFeedback()
     {
@@ -43,6 +42,6 @@ public sealed partial class MainViewModel
 
     private void NotifyBusyFeedback()
     {
-        Notify(nameof(IsBusyFeedbackDeferred)); Notify(nameof(IsBusyProgressVisible)); Notify(nameof(IsWorkspaceLoadingHintVisible));
+        Notify(nameof(IsBusyFeedbackDeferred)); Notify(nameof(IsBusyProgressVisible));
     }
 }

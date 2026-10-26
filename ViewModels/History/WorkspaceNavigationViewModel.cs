@@ -46,6 +46,8 @@ public sealed partial class MainViewModel
                 _ => null
             };
             if (!Current()) return;
+            var rows = comparison is null ? [] : await Task.Run(() => DiffBuilder.Build(comparison), _lifetimeCancellation.Token);
+            if (!Current()) return;
             // 仅同步更新绑定时抑制选择回调，不在任何异步读取期间持有全局锁。
             IsBusy = true;
             try
@@ -57,7 +59,12 @@ public sealed partial class MainViewModel
                     SelectedVersionFile = file;
                     Notify(nameof(VersionComparisonState));
                 }
-                Comparison = comparison;
+                if (_comparison != comparison)
+                {
+                    _comparison = comparison;
+                    Notify(nameof(Comparison));
+                    DiffRows = rows;
+                }
                 Status = "就绪";
                 CacheCurrentWorkspace();
             }
