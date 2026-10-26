@@ -40,7 +40,7 @@ public static class InteractionMotion
     private static void ActiveChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
     {
         if (sender is FrameworkElement element)
-            Animate(element, element, UIElement.OpacityProperty, (bool)args.NewValue ? 1 : 0, 150);
+            Animate(element, element, UIElement.OpacityProperty, (bool)args.NewValue ? 1 : 0, (bool)args.NewValue ? 150 : 90);
     }
 
     private static void IndicatorChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
@@ -48,8 +48,8 @@ public static class InteractionMotion
         if (sender is not FrameworkElement element) return;
         bool active = (bool)args.NewValue;
         var scale = Scale(element);
-        Animate(element, element, UIElement.OpacityProperty, active ? 1 : 0, 160);
-        Animate(element, scale, ScaleTransform.ScaleXProperty, active ? 1 : 0.65, 180);
+        Animate(element, element, UIElement.OpacityProperty, active ? 1 : 0, active ? 160 : 90);
+        Animate(element, scale, ScaleTransform.ScaleXProperty, active ? 1 : 0.65, active ? 180 : 90);
     }
 
     private static void ExpansionChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
@@ -84,7 +84,8 @@ public static class InteractionMotion
             } : null;
         // 使用替换模式，连续点击从当前视觉状态继续，不排队、不留下缩放或透明度残值。
         Begin(target, property, null);
-        target.SetCurrentValue(property, value);
+        // 动画专用视觉层必须保存真实基值；SetCurrentValue 的临时值会在时钟停止时被默认值覆盖。
+        target.SetValue(property, value);
         if (animation is not null) Begin(target, property, animation);
     }
 

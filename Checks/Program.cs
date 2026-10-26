@@ -54,6 +54,7 @@ internal static partial class Program
             if (args.Length > 1 && args[0] == "--switching") { RunSwitchingChecks(args[1..]); return 0; }
             if (args.Length > 1 && args[0] == "--rapid-switching") { RunRapidSwitchingChecks(args[1..]); return 0; }
             if (args.Length > 2 && args[0] == "--background-read") { RunBackgroundReadChecks(args[1..]); return 0; }
+            if (args.Length > 1 && args[0] == "--motion") { RunInteractionMotionChecks(args[1..]); return 0; }
             if (args.Length == 1 && args[0] == "--discovery") { RunDiscoveryChecksAsync().GetAwaiter().GetResult(); return 0; }
             if (args.Length == 1 && args[0] == "--discover-local") { DiscoverLocalAsync().GetAwaiter().GetResult(); return 0; }
             if (args.Length == 1 && args[0] == "--tray") { RunTrayChecks(); return 0; }

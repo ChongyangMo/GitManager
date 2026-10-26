@@ -42,7 +42,11 @@ public partial class MainWindow : Window
     private void RepositoryGroupChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(RepositoryBookmark.RemoteGroup)) return;
-        Dispatcher.BeginInvoke(() => { if (RepositoryList.SelectedItem != ViewModel.Repository) RepositoryList.SelectedItem = ViewModel.Repository; }, System.Windows.Threading.DispatcherPriority.Background);
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (RepositoryList.SelectedItem != ViewModel.Repository)
+                RepositoryList.SetCurrentValue(ListBox.SelectedItemProperty, ViewModel.Repository);
+        }, System.Windows.Threading.DispatcherPriority.Background);
     }
     private sealed class RemoteGroupComparer : System.Collections.IComparer
     {

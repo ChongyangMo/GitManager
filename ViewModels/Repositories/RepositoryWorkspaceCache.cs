@@ -26,7 +26,7 @@ public sealed partial class MainViewModel
             _workspaceCache.Remove(_workspaceCache.Keys.First(path => !string.Equals(path, Repository?.Path, StringComparison.OrdinalIgnoreCase)));
     }
 
-    private void ApplyWorkspace(WorkspaceView view)
+    private void ApplyWorkspace(WorkspaceView view, int? tab = null)
     {
         var content = view.Content;
         var snapshot = content.Snapshot;
@@ -62,7 +62,7 @@ public sealed partial class MainViewModel
         Replace(VersionFiles, content.VersionFiles);
         SelectedVersionFile = VersionFiles.FirstOrDefault(item => item.Path == selection.VersionFile);
         Readme = content.Readme;
-        ActiveTab = selection.Tab;
+        ActiveTab = tab ?? selection.Tab;
         if (_comparison != content.Comparison)
         {
             _comparison = content.Comparison;
