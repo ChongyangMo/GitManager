@@ -2,8 +2,9 @@ namespace GitManager.Services.Repositories;
 
 public sealed class AutoUploadOptions
 {
-    // 开启自动上传的仓库路径；默认不开启任何仓库。
+    // 保留旧版显式开启的仓库记录；未手动关闭的仓库默认开启。
     public List<string> Repositories { get; set; } = [];
+    public List<string> DisabledRepositories { get; set; } = [];
     // 改动文件停止修改达到此时长后才提交，避免把编辑中途的内容提交上去。
     public int QuietSeconds { get; set; } = 60;
     public int CheckIntervalSeconds { get; set; } = 30;

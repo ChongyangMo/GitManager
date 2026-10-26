@@ -18,13 +18,17 @@ public sealed partial class MainViewModel
     public string AutoUploadStatus => HasRepository && IsAutoUploadEnabled ? _autoUploadStates.GetValueOrDefault(Root, "") : "";
     public bool IsAutoUploadEnabled
     {
-        get => HasRepository && AutoUpload.Repositories.Contains(Root, StringComparer.OrdinalIgnoreCase);
+        get => HasRepository && !AutoUpload.DisabledRepositories.Contains(Root, StringComparer.OrdinalIgnoreCase);
         set
         {
             if (!HasRepository || value == IsAutoUploadEnabled) return;
             string root = Root;
-            if (value) AutoUpload.Repositories.Add(root);
-            else AutoUpload.Repositories.RemoveAll(path => string.Equals(path, root, StringComparison.OrdinalIgnoreCase));
+            if (value) AutoUpload.DisabledRepositories.RemoveAll(path => string.Equals(path, root, StringComparison.OrdinalIgnoreCase));
+            else
+            {
+                AutoUpload.DisabledRepositories.Add(root);
+                AutoUpload.Repositories.RemoveAll(path => string.Equals(path, root, StringComparison.OrdinalIgnoreCase));
+            }
             _autoUploadStates.Remove(root);
             _autoUploadRetryAt.Remove(root);
             Settings.Save();
@@ -51,7 +55,7 @@ public sealed partial class MainViewModel
 
     public Task RunAutoUploadAsync()
     {
-        if (_disposed || AutoUpload.Repositories.Count == 0) return Task.CompletedTask;
+        if (_disposed) return Task.CompletedTask;
         if (_autoUploadScan is { IsCompleted: false }) return _autoUploadScan;
         return _autoUploadScan = ScanAutoUploadAsync();
     }
@@ -64,7 +68,11 @@ public sealed partial class MainViewModel
 
     private async Task ScanAutoUploadAsync()
     {
-        foreach (string root in AutoUpload.Repositories.ToArray())
+        var roots = Settings.Value.Repositories.Concat(AutoUpload.Repositories)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(root => !AutoUpload.DisabledRepositories.Contains(root, StringComparer.OrdinalIgnoreCase)
+                && !Settings.Value.IgnoredRepositories.Contains(root, StringComparer.OrdinalIgnoreCase)).ToArray();
+        foreach (string root in roots)
         {
             if (_disposed) return;
             if (!Directory.Exists(root) || _autoUploadRetryAt.TryGetValue(root, out var retry) && DateTime.UtcNow < retry) continue;

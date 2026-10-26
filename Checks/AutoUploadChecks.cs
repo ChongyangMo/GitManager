@@ -40,9 +40,11 @@ internal static partial class Program
         settings.Value.AutoUpload.QuietSeconds = 3600;
         using var model = new MainViewModel(settings);
         await model.InitializeAsync(local);
-        Check(!model.IsAutoUploadEnabled && model.AutoUploadStatus == "", "仓库默认不开启自动上传");
+        Check(model.IsAutoUploadEnabled && model.AutoUploadStatus == "", "仓库默认开启自动上传");
+        model.IsAutoUploadEnabled = false;
+        Check(new SettingsStore(settings.FilePath).Value.AutoUpload.DisabledRepositories.Single() == model.Root, "手动关闭自动上传后写入配置");
         model.IsAutoUploadEnabled = true;
-        Check(new SettingsStore(settings.FilePath).Value.AutoUpload.Repositories.Single() == model.Root, "开启自动上传后写入配置");
+        Check(new SettingsStore(settings.FilePath).Value.AutoUpload.DisabledRepositories.Count == 0, "重新开启自动上传后清除关闭记录");
 
         await File.WriteAllTextAsync(Path.Combine(local, "文档.txt"), "正在编辑的内容\n");
         await model.RunAutoUploadAsync();
@@ -75,6 +77,6 @@ internal static partial class Program
         Console.WriteLine("自动上传状态：" + model.AutoUploadStatus);
 
         model.IsAutoUploadEnabled = false;
-        Check(new SettingsStore(settings.FilePath).Value.AutoUpload.Repositories.Count == 0 && model.AutoUploadStatus == "", "关闭自动上传后移出配置");
+        Check(new SettingsStore(settings.FilePath).Value.AutoUpload.DisabledRepositories.Single() == model.Root && model.AutoUploadStatus == "", "关闭自动上传后保存关闭记录");
     }
 }

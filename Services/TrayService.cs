@@ -10,6 +10,7 @@ public sealed class TrayService : IDisposable
     private readonly MainWindow _window;
     private readonly Drawing.Icon _icon;
     private readonly Forms.ContextMenuStrip _menu;
+    private readonly Forms.ToolStripMenuItem _startupItem;
     private readonly Forms.NotifyIcon _tray;
     private WindowState _restoreState = WindowState.Normal;
     private bool _exiting, _disposed;
@@ -26,11 +27,45 @@ public sealed class TrayService : IDisposable
         _menu = new Forms.ContextMenuStrip();
         _menu.Items.Add("显示主窗口", null, (_, _) => Restore());
         _menu.Items.Add(new Forms.ToolStripSeparator());
+        _startupItem = new Forms.ToolStripMenuItem("开机自启动");
+        _startupItem.Click += ToggleStartup;
+        _menu.Items.Add(_startupItem);
+        _menu.Opening += MenuOpening;
+        _menu.Items.Add(new Forms.ToolStripSeparator());
         _menu.Items.Add("退出", null, (_, _) => Exit());
         _tray = new Forms.NotifyIcon { Icon = _icon, Text = "GitManager", ContextMenuStrip = _menu, Visible = true };
         _tray.MouseDoubleClick += TrayDoubleClicked;
         _window.Closing += WindowClosing;
         _window.StateChanged += WindowStateChanged;
+    }
+
+    private void MenuOpening(object? sender, CancelEventArgs e)
+    {
+        try
+        {
+            _startupItem.Checked = StartupService.IsEnabled;
+            _startupItem.Enabled = true;
+        }
+        catch (Exception ex)
+        {
+            _startupItem.Checked = false;
+            _startupItem.Enabled = false;
+            AppLog.Write("读取开机自启动设置失败", ex);
+        }
+    }
+
+    private void ToggleStartup(object? sender, EventArgs e)
+    {
+        try
+        {
+            StartupService.SetEnabled(!StartupService.IsEnabled);
+            _startupItem.Checked = StartupService.IsEnabled;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("修改开机自启动设置失败", ex);
+            MessageBox.Show(_window, "无法修改开机自启动设置：" + ex.Message, "设置失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void WindowClosing(object? sender, CancelEventArgs e)

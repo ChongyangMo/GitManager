@@ -168,9 +168,31 @@ public partial class MainWindow : Window
         if (ViewModel.HasRepository) fields.Add(new("本仓库提交姓名", ViewModel.UserName));
         var dialog = new FormWindow("设置", fields.ToArray()) { Owner = this, Validate = () => fields[1].Value.Trim() is var email && email.Contains('@') && !email.Any(char.IsWhiteSpace) ? null : "请填写有效的提交邮箱。" };
         dialog.ShowTheme(ViewModel.Settings.Value.Theme);
+        bool startupEnabled;
+        try { startupEnabled = StartupService.IsEnabled; }
+        catch (Exception ex)
+        {
+            AppLog.Write("读取开机自启动设置失败", ex);
+            MessageBox.Show(this, "无法读取开机自启动设置：" + ex.Message, "设置失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+        dialog.ShowOption("开机自启动", startupEnabled);
         dialog.ShowAction("打开日志", OpenLogs);
         dialog.ShowAction("大模型总结", () => GitManager.Views.CommitMessages.QwenSettingsWindow.Open(dialog, ViewModel));
-        if (dialog.ShowDialog() == true) await ViewModel.SaveSettingsAsync(fields[0].Value.Trim(), dialog.Theme, fields.Count > 2 ? fields[2].Value : "", fields[1].Value.Trim());
+        if (dialog.ShowDialog() == true)
+        {
+            if (dialog.OptionValue != startupEnabled)
+            {
+                try { StartupService.SetEnabled(dialog.OptionValue); }
+                catch (Exception ex)
+                {
+                    AppLog.Write("修改开机自启动设置失败", ex);
+                    MessageBox.Show(this, "无法修改开机自启动设置：" + ex.Message, "设置失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+            }
+            await ViewModel.SaveSettingsAsync(fields[0].Value.Trim(), dialog.Theme, fields.Count > 2 ? fields[2].Value : "", fields[1].Value.Trim());
+        }
     }
     private static void OpenLogs()
     {

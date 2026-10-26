@@ -53,6 +53,7 @@ public sealed class SettingsStore
         Value.RepositoryDiscovery.Roots ??= [];
         Value.AutoUpload ??= new();
         Value.AutoUpload.Repositories ??= [];
+        Value.AutoUpload.DisabledRepositories ??= [];
         Value.Qwen ??= new();
         Value.Claude ??= new();
         Value.Codex ??= new();
