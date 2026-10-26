@@ -7,6 +7,7 @@ namespace GitManager;
 public partial class App : Application
 {
     private TrayService? _tray;
+    private Services.LuxAi.LuxAiSessionMaintenance? _luxAiMaintenance;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -37,6 +38,7 @@ public partial class App : Application
                 return;
             }
             var viewModel = new MainViewModel(settings);
+            _luxAiMaintenance = new(() => settings.Value.LuxAi);
             var window = new MainWindow(viewModel);
             MainWindow = window;
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -68,6 +70,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _luxAiMaintenance?.Dispose();
         _tray?.Dispose();
         base.OnExit(e);
     }

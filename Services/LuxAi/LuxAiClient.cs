@@ -25,7 +25,7 @@ public sealed class LuxAiClient(LuxAiOptions options) : IDisposable
     public async Task<LuxAiSession> EnsureSessionAsync(CancellationToken token, bool renew = false)
     {
         var session = LuxAiCredentials.Read(options) ?? throw new LuxAiLoginRequiredException();
-        return renew || LuxAiAuthentication.Expiring(session.AiToken) ? await RefreshAsync(session, token) : session;
+        return renew || LuxAiAuthentication.NeedsRenewal(session) ? await RefreshAsync(session, token) : session;
     }
 
     private async Task<LuxAiSession> RefreshAsync(LuxAiSession previous, CancellationToken token)
@@ -34,7 +34,11 @@ public sealed class LuxAiClient(LuxAiOptions options) : IDisposable
         try
         {
             var current = LuxAiCredentials.Read(options);
-            if (current is not null && current.AiToken != previous.AiToken) return current;
+            if (current is not null && current != previous)
+            {
+                if (!LuxAiAuthentication.NeedsRenewal(current)) return current;
+                previous = current;
+            }
             if (previous.RefreshToken.Length == 0) throw new LuxAiLoginRequiredException();
             using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(LuxAiOptions.AccountEndpoint, "api/Account/RefreshToken"));
             request.Headers.Authorization = new("Bearer", previous.RefreshToken);
@@ -42,9 +46,11 @@ public sealed class LuxAiClient(LuxAiOptions options) : IDisposable
             using var body = await ReadJsonAsync(response, token);
             var fresh = LuxAiAuthentication.ReadLogin(body.RootElement) ?? throw new LuxAiLoginRequiredException();
             if (fresh.RefreshToken.Length == 0) throw new LuxAiLoginRequiredException();
-            fresh = fresh with { EmployeeCode = fresh.EmployeeCode.Length > 0 ? fresh.EmployeeCode : previous.EmployeeCode };
-            await ValidateSessionAsync(fresh, token);
+            fresh = fresh with { EmployeeCode = fresh.EmployeeCode.Length > 0 ? fresh.EmployeeCode : previous.EmployeeCode,
+                RenewedAt = DateTimeOffset.UtcNow };
+            // 续期可能轮换账户凭据，先保存，避免后续验证遇到网络错误时丢失新凭据。
             LuxAiCredentials.Save(options, fresh);
+            await ValidateSessionAsync(fresh, token);
             AppLog.Write("集团 AI 登录状态已自动续期");
             return fresh;
         }

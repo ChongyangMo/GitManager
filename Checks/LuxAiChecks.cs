@@ -12,6 +12,51 @@ namespace GitManager.Checks;
 
 internal static partial class Program
 {
+    private static async Task InspectLuxAiSessionAsync()
+    {
+        var options = new SettingsStore().Value.LuxAi;
+        var session = LuxAiCredentials.Read(options) ?? throw new LuxAiLoginRequiredException();
+        foreach (var (name, value) in new[] { ("AI", session.AiToken), ("续期", session.RefreshToken) })
+        {
+            var parts = value.Split('.');
+            if (parts.Length != 3) { Console.WriteLine(name + "凭据没有 JWT 到期信息"); continue; }
+            string payload = parts[1].Replace('-', '+').Replace('_', '/');
+            using var json = JsonDocument.Parse(Convert.FromBase64String(payload.PadRight((payload.Length + 3) / 4 * 4, '=')));
+            foreach (string claim in new[] { "iat", "nbf", "exp" })
+                if (json.RootElement.TryGetProperty(claim, out var time) && time.TryGetInt64(out long seconds))
+                    Console.WriteLine($"{name} {claim}：{DateTimeOffset.FromUnixTimeSeconds(seconds):O}");
+        }
+        Console.WriteLine("当前需要续期：" + LuxAiAuthentication.NeedsRenewal(session));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(25));
+        using var client = new LuxAiClient(options);
+        await client.ValidateSessionAsync(session, timeout.Token);
+        Console.WriteLine("已保存的 AI 会话验证通过");
+    }
+
+    private static async Task RunLuxAiMaintenanceAsync()
+    {
+        var options = new SettingsStore().Value.LuxAi;
+        var before = LuxAiCredentials.Read(options) ?? throw new LuxAiLoginRequiredException();
+        bool due = LuxAiAuthentication.NeedsRenewal(before);
+        var maintenance = new LuxAiSessionMaintenance(() => options);
+        try
+        {
+            // 使用本机真实凭据和真实接口，检查后台处理及取消，不创建测试登录数据。
+            await Task.Delay(TimeSpan.FromSeconds(3));
+            Check(!maintenance.Completion.IsCompleted, "后台维护完成本轮检查后继续等待，不因凭据失效退出");
+        }
+        finally { maintenance.Dispose(); }
+        await maintenance.Completion.WaitAsync(TimeSpan.FromSeconds(5));
+        Check(maintenance.Completion.IsCompletedSuccessfully, "后台维护可及时取消并正常停止");
+        var after = LuxAiCredentials.Read(options);
+        Check(after is not null, "后台维护保留登录凭据");
+        if (after != before)
+            Check(after!.RenewedAt > before.RenewedAt || before.RenewedAt is null && after!.RenewedAt is not null,
+                "真实后台续期更新保存时间");
+        Console.WriteLine("本轮开始时需要续期：" + due);
+        Console.WriteLine("本轮会话已更新：" + (after != before));
+    }
+
     private static void RenderLuxAiSettings(string screenshot)
     {
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };

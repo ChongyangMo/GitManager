@@ -140,7 +140,7 @@ public sealed class LuxAiLoginWindow : Window
         using var client = new LuxAiClient(_options);
         await client.ValidateSessionAsync(session, timeout.Token);
         if (_closed) return;
-        LuxAiCredentials.Save(_options, session);
+        LuxAiCredentials.Save(_options, session with { RenewedAt = DateTimeOffset.UtcNow });
         AppLog.Write("集团 AI 登录验证通过，会话已保存至 Windows 凭据管理器");
         DialogResult = true;
     }

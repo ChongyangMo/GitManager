@@ -6,7 +6,7 @@ using System.Text.Json;
 
 namespace GitManager.Services.LuxAi;
 
-public sealed record LuxAiSession(string AiToken, string RefreshToken, string EmployeeCode);
+public sealed record LuxAiSession(string AiToken, string RefreshToken, string EmployeeCode, DateTimeOffset? RenewedAt = null);
 
 // 只保存 AI 会话，不保存工号密码；使用独立的 Windows 凭据条目。
 public static class LuxAiCredentials

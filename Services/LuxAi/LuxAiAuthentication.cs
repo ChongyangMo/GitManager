@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace GitManager.Services.LuxAi;
 
-public sealed class LuxAiLoginRequiredException() : InvalidOperationException("请在“设置 → 大模型总结 → 集团 AI”中登录一次，后续自动复用登录状态。");
+public sealed class LuxAiLoginRequiredException() : InvalidOperationException("集团 AI 登录已失效，请在“设置 → 大模型总结 → 集团 AI”中重新登录。");
 
 public static class LuxAiAuthentication
 {
@@ -30,7 +30,11 @@ public static class LuxAiAuthentication
         return ai.Length > 0 ? new(ai, refresh, employee) : null;
     }
 
-    public static bool Expiring(string token)
+    public static bool NeedsRenewal(LuxAiSession session) => Expiring(session.AiToken)
+        || session.RefreshToken.Length > 0 && (Expiring(session.RefreshToken, TimeSpan.FromMinutes(10))
+            || session.RenewedAt is null || session.RenewedAt <= DateTimeOffset.UtcNow.AddMinutes(-20));
+
+    public static bool Expiring(string token, TimeSpan? margin = null)
     {
         try
         {
@@ -40,7 +44,7 @@ public static class LuxAiAuthentication
             value = value.PadRight((value.Length + 3) / 4 * 4, '=');
             using var document = JsonDocument.Parse(Convert.FromBase64String(value));
             return document.RootElement.ValueKind == JsonValueKind.Object && document.RootElement.TryGetProperty("exp", out var exp) && exp.TryGetInt64(out long seconds)
-                && DateTimeOffset.FromUnixTimeSeconds(seconds) <= DateTimeOffset.UtcNow.AddMinutes(3);
+                && DateTimeOffset.FromUnixTimeSeconds(seconds) <= DateTimeOffset.UtcNow.Add(margin ?? TimeSpan.FromMinutes(3));
         }
         catch (Exception ex) when (ex is FormatException or JsonException or ArgumentOutOfRangeException) { return false; }
     }
