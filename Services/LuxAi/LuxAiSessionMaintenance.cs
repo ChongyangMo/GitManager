@@ -7,6 +7,7 @@ public sealed class LuxAiSessionMaintenance : IDisposable
     private readonly CancellationTokenSource _stop = new();
     private readonly Task _worker;
     private LuxAiSession? _rejectedSession;
+    private string? _rejectedAccountKey;
     private string? _lastError;
     private bool _disposed;
 
@@ -32,24 +33,30 @@ public sealed class LuxAiSessionMaintenance : IDisposable
     private async Task MaintainAsync()
     {
         LuxAiSession? session = null;
+        string? accountKey = null;
         try
         {
             var options = _options();
             if (!options.Enabled) return;
             session = LuxAiCredentials.Read(options);
-            if (session is null || session == _rejectedSession || !LuxAiAuthentication.NeedsRenewal(session)) return;
+            accountKey = LuxAiAccountCredentials.Key(LuxAiAccountCredentials.Read(options));
+            if (session is null && accountKey is null
+                || session == _rejectedSession && accountKey == _rejectedAccountKey
+                || session is not null && !LuxAiAuthentication.NeedsRenewal(session)) return;
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);
             timeout.CancelAfter(TimeSpan.FromSeconds(25));
             using var client = new LuxAiClient(options);
             await client.EnsureSessionAsync(timeout.Token);
             _rejectedSession = null;
+            _rejectedAccountKey = null;
             _lastError = null;
         }
         catch (OperationCanceledException) when (_stop.IsCancellationRequested) { }
         catch (LuxAiLoginRequiredException)
         {
             _rejectedSession = session;
-            AppLog.Write("集团 AI 后台续期被拒绝，需要重新登录；重新登录后将自动恢复定时续期");
+            _rejectedAccountKey = accountKey;
+            AppLog.Write("集团 AI 自动恢复登录未通过，请使用账号密码重新登录；更新后将自动恢复后台维护");
         }
         catch (Exception ex)
         {

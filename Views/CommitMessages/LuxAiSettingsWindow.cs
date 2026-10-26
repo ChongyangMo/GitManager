@@ -35,12 +35,17 @@ public sealed class LuxAiSettingsWindow : FormWindow
             }
             catch (Exception ex) { ShowNote("连接", AppLog.Clean(ex.Message)); }
         });
+        ShowAction("清除密码", () =>
+        {
+            try { LuxAiAccountCredentials.Delete(Options); UpdateStatus(); }
+            catch (Exception ex) { ShowNote("连接", AppLog.Clean(ex.Message)); }
+        });
         Validate = () =>
         {
             try
             {
                 _ = Options.Endpoint();
-                return OptionValue && LuxAiCredentials.Read(Options) is null ? "请先登录集团 AI。" : null;
+                return OptionValue && LuxAiCredentials.Read(Options) is null && LuxAiAccountCredentials.Read(Options) is null ? "请先登录集团 AI。" : null;
             }
             catch (Exception ex) { return AppLog.Clean(ex.Message); }
         };
@@ -54,7 +59,8 @@ public sealed class LuxAiSettingsWindow : FormWindow
 
     private void UpdateStatus()
     {
-        try { ShowNote("连接", LuxAiCredentials.Read(Options) is { } session ? "已登录 " + session.EmployeeCode : "未登录"); }
+        try { ShowNote("连接", LuxAiAccountCredentials.Read(Options) is not null ? "已启用断线自动登录"
+            : LuxAiCredentials.Read(Options) is { } session ? "已登录 " + session.EmployeeCode : "未登录"); }
         catch (Exception ex) { ShowNote("连接", AppLog.Clean(ex.Message)); }
     }
 

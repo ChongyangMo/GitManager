@@ -11,7 +11,7 @@ using Microsoft.Web.WebView2.Wpf;
 
 namespace GitManager.Views.CommitMessages;
 
-public sealed class LuxAiLoginWindow : Window
+public sealed partial class LuxAiLoginWindow : Window
 {
     private readonly LuxAiOptions _options;
     private readonly WebView2 _browser = new();
@@ -41,7 +41,10 @@ public sealed class LuxAiLoginWindow : Window
         retry.Click += (_, _) => _browser.CoreWebView2?.Reload();
         DockPanel.SetDock(retry, Dock.Right); footer.Children.Add(retry);
         _status.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
-        footer.Children.Add(_status); Content = grid;
+        var statusPanel = new StackPanel();
+        statusPanel.Children.Add(_rememberPassword);
+        statusPanel.Children.Add(_status);
+        footer.Children.Add(statusPanel); Content = grid;
         Loaded += async (_, _) => await InitializeAsync();
         Closed += (_, _) => { _closed = true; _lifetime.Cancel(); _browser.Dispose(); _lifetime.Dispose(); };
     }
@@ -99,6 +102,8 @@ public sealed class LuxAiLoginWindow : Window
                 && (uri.AbsolutePath.Contains("Login", StringComparison.OrdinalIgnoreCase)
                     || uri.AbsolutePath.EndsWith("/RefreshToken", StringComparison.OrdinalIgnoreCase)))
             {
+                var accountTask = uri.AbsolutePath.Equals("/api/Account/Login", StringComparison.OrdinalIgnoreCase)
+                    ? ReadLoginAccountAsync(args.Request) : Task.FromResult<LuxAiAccount?>(null);
                 await using var stream = await args.Response.GetContentAsync();
                 if (stream is null) return;
                 using var reader = new StreamReader(stream);
@@ -109,7 +114,7 @@ public sealed class LuxAiLoginWindow : Window
                 if (LuxAiAuthentication.ReadLogin(body.RootElement) is { } session)
                 {
                     _observed = session;
-                    await CompleteAsync(session);
+                    await CompleteAsync(session, await accountTask);
                 }
             }
             else if (uri.Port == 8000 && uri.AbsolutePath == "/api/v1/chat/conversation"
@@ -130,7 +135,7 @@ public sealed class LuxAiLoginWindow : Window
         }
     }
 
-    private async Task CompleteAsync(LuxAiSession session)
+    private async Task CompleteAsync(LuxAiSession session, LuxAiAccount? account = null)
     {
         if (_closed || _completing) return;
         _completing = true;
@@ -141,6 +146,8 @@ public sealed class LuxAiLoginWindow : Window
         await client.ValidateSessionAsync(session, timeout.Token);
         if (_closed) return;
         LuxAiCredentials.Save(_options, session with { RenewedAt = DateTimeOffset.UtcNow });
+        await SaveLoginAccountAsync(session, account);
+        if (_closed) return;
         AppLog.Write("集团 AI 登录验证通过，会话已保存至 Windows 凭据管理器");
         DialogResult = true;
     }

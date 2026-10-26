@@ -13,7 +13,8 @@ public sealed partial class CommitMessageGenerator
     {
         var options = settings.Value.LuxAi;
         _ = options.Endpoint();
-        var session = LuxAiCredentials.Read(options) ?? throw new LuxAiLoginRequiredException();
+        using var sessionClient = new LuxAiClient(options);
+        var session = LuxAiCredentials.Read(options) ?? await sessionClient.EnsureSessionAsync(token);
         // 集团内接口单独处理：不经过 Claude、千问分支，失败也不把内容转给其他提供方。
         var limits = new QwenOptions { MaxInputCharacters = options.MaxInputCharacters, MaxFileCharacters = options.MaxFileCharacters };
         var reader = new CommitContentReader(git);
