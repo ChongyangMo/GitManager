@@ -35,16 +35,6 @@ public sealed partial class MainViewModel
 
     public Task CreateRepositoryAsync(string path) => ExecuteAsync("正在建立仓库", async () => await OpenCoreAsync(await Git.InitializeAsync(path)));
     public Task CloneRepositoryAsync(string url, string destination) => ExecuteAsync("正在克隆仓库", async () => await OpenCoreAsync(await Git.CloneAsync(url, destination)));
-    public Task RefreshAsync() => ExecuteAsync("正在刷新", async () =>
-    {
-        await DiscoverRepositoriesCoreAsync();
-        await RefreshRepositoryNamesAsync();
-        if (HasRepository) await RefreshCoreAsync();
-        else if (Repositories.FirstOrDefault() is { } first) await OpenCoreAsync(first.Path);
-        _ = RefreshRepositoryPushIndicatorsAsync();
-        if (HasRepository) ReloadGitHubVisibility();
-    });
-
     private async Task RefreshCoreAsync()
     {
         bool sameRepository = string.Equals(_snapshotRoot, Root, StringComparison.OrdinalIgnoreCase);

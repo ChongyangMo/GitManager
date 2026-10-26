@@ -18,15 +18,9 @@ public sealed partial class MainViewModel
     }
 
     public Task ShowChangeAsync() => !HasRepository ? Task.CompletedTask : ActiveTab is HistoryTab or RemoteTab
-        ? NavigateHistoryAsync(ActiveTab == RemoteTab, loadFiles: false) : ExecuteAsync("正在读取文件差异", LoadComparisonCoreAsync);
+        ? NavigateHistoryAsync(ActiveTab == RemoteTab, loadFiles: false) : NavigateWorkspaceAsync(loadFiles: false);
     public Task ShowActiveTabAsync() => !HasRepository ? Task.CompletedTask : ActiveTab is HistoryTab or RemoteTab
-        ? NavigateHistoryAsync(ActiveTab == RemoteTab, loadFiles: true) : ExecuteAsync("正在读取版本", async () =>
-    {
-        if (ActiveTab == RemoteTab) await LoadRemoteFilesCoreAsync();
-        if (ActiveTab == VersionTab) await LoadVersionFilesCoreAsync();
-        if (ActiveTab == ReadmeTab) Readme = await ReadmeReader.ReadAsync(Root);
-        await LoadComparisonCoreAsync();
-    });
+        ? NavigateHistoryAsync(ActiveTab == RemoteTab, loadFiles: true) : NavigateWorkspaceAsync(loadFiles: true);
     public Task ShowCommitAsync() => NavigateHistoryAsync(remote: false, loadFiles: true);
 
     public Task RestoreAsync(bool fileOnly) => ExecuteAsync("正在恢复代码", async () =>

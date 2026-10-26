@@ -105,13 +105,13 @@ public sealed partial class MainViewModel
         SelectedRemoteFile = RemoteFiles.FirstOrDefault(item => item.Path == path) ?? RemoteFiles.FirstOrDefault();
     }
 
-    public Task SelectRemoteBranchAsync() => ExecuteAsync("正在切换远程分支", async () =>
+    public async Task SelectRemoteBranchAsync()
     {
-        await RefreshVersionsCoreAsync();
-        await FetchRemoteCoreAsync(tolerateFailure: true);
-        await RefreshVersionsCoreAsync();
-        await LoadComparisonCoreAsync();
-    });
+        if (_disposed || !CanOperate) return;
+        InvalidateHistoryNavigation();
+        StartWorkspaceRefresh(fetchAfter: true);
+        if (_workspaceRefreshTask is { } refresh) await refresh;
+    }
 
     public Task ShowRemoteCommitAsync() => NavigateHistoryAsync(remote: true, loadFiles: true);
 }

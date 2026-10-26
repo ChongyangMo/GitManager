@@ -8,7 +8,7 @@ public sealed partial class MainViewModel
     private static readonly TimeSpan BusyFeedbackDelay = TimeSpan.FromMilliseconds(300);
     private DispatcherTimer? _busyFeedbackTimer;
     private bool _busyFeedbackVisible;
-    private bool IsLocked => _busy || _workspaceLoading;
+    private bool IsLocked => _busy;
     public bool IsBusyFeedbackDeferred => IsLocked && !_busyFeedbackVisible;
     public bool IsBusyProgressVisible => _busy && _busyFeedbackVisible;
     public bool IsWorkspaceLoadingHintVisible => _workspaceLoading && _busyFeedbackVisible;

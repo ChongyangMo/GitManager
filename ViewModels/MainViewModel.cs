@@ -78,6 +78,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public async Task ExecuteAsync(string message, Func<Task> action)
     {
         if (IsBusy) return;
+        _repositoryOpenGeneration++;
         InvalidateHistoryNavigation();
         IsBusy = true;
         Status = message;
@@ -111,17 +112,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             }
         }
     }
-
-    public Task InitializeAsync(string? repository) => ExecuteAsync("正在读取仓库", async () =>
-    {
-        await DiscoverRepositoriesCoreAsync();
-        await RefreshRepositoryNamesAsync();
-        string? path = repository ?? Settings.Value.LastRepository ?? Repositories.FirstOrDefault()?.Path;
-        if (path is not null) await OpenCoreAsync(path);
-        StartRepositoryPushMonitoring();
-        StartAutoUploadMonitoring();
-        _ = EnsureCommitEmailAsync();
-    });
 
     // 首次启动时从 GitHub 登录账号取得关联邮箱并保存，之后所有仓库提交统一使用。
     private async Task EnsureCommitEmailAsync()

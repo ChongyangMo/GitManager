@@ -43,22 +43,30 @@ public sealed partial class MainViewModel
         return await Git.CompareVersionsAsync(Root, ComparisonBefore, ComparisonAfter, SelectedVersionFile);
     }
 
-    public Task CompareSelectedVersionsAsync() => ExecuteAsync("正在对比版本", async () =>
+    public Task CompareSelectedVersionsAsync()
     {
         _followHeads = false;
-        await LoadVersionFilesCoreAsync();
-        await LoadComparisonCoreAsync();
-    });
+        return NavigateWorkspaceAsync(loadFiles: true);
+    }
 
-    public Task CompareHeadsAsync(bool selectedRemoteCommit = false) => ExecuteAsync("正在对比本地与远程版本", async () =>
+    public Task CompareHeadsAsync(bool selectedRemoteCommit = false)
     {
+        if (!CanOperate || _disposed) return Task.CompletedTask;
         var remote = selectedRemoteCommit ? SelectedRemoteCommit : _versions?.RemoteHead;
-        if (remote is null || _versions?.LocalHead is null) throw new InvalidOperationException("需要先获取远程版本，并确保本地已有提交。");
-        ComparisonBefore = VersionChoices.First(item => item.Commit.Hash == remote.Hash && item.Source.StartsWith(RemoteSource + " ", StringComparison.Ordinal));
-        ComparisonAfter = VersionChoices.First(item => item.Commit.Hash == _versions.LocalHead.Hash && item.Source.StartsWith("本地 ", StringComparison.Ordinal));
-        _followHeads = !selectedRemoteCommit;
-        ActiveTab = VersionTab;
-        await LoadVersionFilesCoreAsync();
-        await LoadComparisonCoreAsync();
-    });
+        if (remote is null || _versions?.LocalHead is null)
+        {
+            Status = "需要先获取远程版本，并确保本地已有提交。";
+            return Task.CompletedTask;
+        }
+        IsBusy = true;
+        try
+        {
+            ComparisonBefore = VersionChoices.First(item => item.Commit.Hash == remote.Hash && item.Source.StartsWith(RemoteSource + " ", StringComparison.Ordinal));
+            ComparisonAfter = VersionChoices.First(item => item.Commit.Hash == _versions.LocalHead.Hash && item.Source.StartsWith("本地 ", StringComparison.Ordinal));
+            _followHeads = !selectedRemoteCommit;
+            ActiveTab = VersionTab;
+        }
+        finally { IsBusy = false; }
+        return NavigateWorkspaceAsync(loadFiles: true);
+    }
 }

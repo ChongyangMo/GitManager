@@ -23,10 +23,11 @@ public sealed partial class MainViewModel
     public Task OpenRepositoryAsync(string path)
     {
         if (IsBusy || _disposed) return Task.CompletedTask;
+        long openGeneration = ++_repositoryOpenGeneration;
         CancelCommitSummary();
         InvalidateHistoryNavigation();
         var bookmark = Repositories.FirstOrDefault(item => string.Equals(item.Path, Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase));
-        if (bookmark is null) return ExecuteAsync("正在打开仓库", () => OpenCoreAsync(path));
+        if (bookmark is null) return RegisterRepositoryAsync(path, openGeneration);
         bookmark.RefreshPath();
         CacheCurrentWorkspace();
         _backgroundFetchCancellation?.Cancel();
@@ -114,6 +115,9 @@ public sealed partial class MainViewModel
         {
             var content = await read;
             if (_disposed || generation != _workspaceGeneration || Repository?.Path != root || IsBusy) return;
+            int requestedTab = ActiveTab;
+            bool loadRequestedTab = _workspaceLoading && requestedTab != content.Selection.Tab;
+            if (loadRequestedTab) content = content with { Selection = content.Selection with { Tab = requestedTab } };
             IsBusy = true;
             try
             {
@@ -123,6 +127,7 @@ public sealed partial class MainViewModel
                 Status = "就绪";
             }
             finally { IsBusy = false; }
+            if (loadRequestedTab) _ = ShowActiveTabAsync();
             if (fetchAfter) StartBackgroundFetch();
         }
         catch (Exception ex)

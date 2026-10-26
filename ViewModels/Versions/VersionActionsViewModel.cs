@@ -2,7 +2,7 @@ namespace GitManager.ViewModels;
 
 public sealed partial class MainViewModel
 {
-    public Task RunVersionSyncAsync(string operation) => ExecuteAsync(operation switch { "push" => "正在推送本地版本", "pull" => "正在更新本地版本", "merge" => "正在合并远程版本", "sync" => "正在同步版本", _ => "正在获取远程版本" }, async () =>
+    public Task RunVersionSyncAsync(string operation) => operation == "fetch" ? FetchCurrentRepositoryAsync() : ExecuteAsync(operation switch { "push" => "正在推送本地版本", "pull" => "正在更新本地版本", "merge" => "正在合并远程版本", "sync" => "正在同步版本", _ => "正在获取远程版本" }, async () =>
     {
         if (_versions?.HasRemote != true) throw new InvalidOperationException("请先设置远程仓库。");
         try
