@@ -29,6 +29,7 @@ public sealed partial class MainViewModel
         if (bookmark is null) return ExecuteAsync("正在打开仓库", () => OpenCoreAsync(path));
         bookmark.RefreshPath();
         CacheCurrentWorkspace();
+        _backgroundFetchCancellation?.Cancel();
         _workspaceGeneration++;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         IsBusy = true;
@@ -81,7 +82,13 @@ public sealed partial class MainViewModel
 
     private async Task ReleaseWorkspaceReadAsync(string root, Task<WorkspaceContent> task)
     {
-        try { await task; }
+        try
+        {
+            var content = await task;
+            // 用户已切走的读取仍可用于下次打开，但不能覆盖已有草稿或当前页面。
+            if (!_disposed && Repository?.Path != root && !_workspaceCache.ContainsKey(root))
+                StoreWorkspace(root, new(content, "", []));
+        }
         catch { /* 读取错误由当前页面或预读流程处理。 */ }
         finally
         {
@@ -98,6 +105,7 @@ public sealed partial class MainViewModel
         var selection = _snapshotRoot == root ? CaptureWorkspaceSelection() : new WorkspaceSelection();
         _workspaceRefreshing = true;
         _workspaceRefreshTask = RefreshWorkspaceInBackgroundAsync(root, generation, GetWorkspaceRead(root, selection), fetchAfter);
+        if (_workspaceLoading) _ = LoadWorkspacePreviewAsync(root, generation);
     }
 
     private async Task RefreshWorkspaceInBackgroundAsync(string root, long generation, Task<WorkspaceContent> read, bool fetchAfter)
@@ -120,7 +128,7 @@ public sealed partial class MainViewModel
         catch (Exception ex)
         {
             if (_disposed || generation != _workspaceGeneration || Repository?.Path != root) return;
-            SetWorkspaceLoading(true);
+            // 刷新失败时保留已经显示的页面，错误通过状态栏呈现。
             Status = AppLog.Clean(ex.Message);
             AppLog.Write("后台读取仓库失败", ex);
         }
@@ -157,7 +165,7 @@ public sealed partial class MainViewModel
         try
         {
             await Task.Yield();
-            foreach (var bookmark in Repositories.Take(8).ToArray())
+            foreach (var bookmark in Repositories.ToArray())
             {
                 if (_disposed) break;
                 if (Repository?.Path == bookmark.Path || _workspaceCache.ContainsKey(bookmark.Path)) continue;

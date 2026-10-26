@@ -58,7 +58,6 @@
                 </Border>
                 <versions:VersionStatusBar Grid.Row="1"><versions:VersionStatusBar.Style><Style TargetType="versions:VersionStatusBar"><Style.Triggers><DataTrigger Binding="{Binding IsWorkspaceLoading}" Value="True"><Setter Property="Visibility" Value="Hidden" /></DataTrigger></Style.Triggers></Style></versions:VersionStatusBar.Style></versions:VersionStatusBar>
                 <Grid Grid.Row="2" IsEnabled="{Binding CanOperate}">
-                    <Grid.Style><Style TargetType="Grid"><Style.Triggers><DataTrigger Binding="{Binding IsWorkspaceLoading}" Value="True"><Setter Property="Visibility" Value="Hidden" /></DataTrigger></Style.Triggers></Style></Grid.Style>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="360" MinWidth="285" /><ColumnDefinition Width="5" /><ColumnDefinition Width="*" MinWidth="360" /></Grid.ColumnDefinitions>
                     <layout:CollapsiblePane SettingsKey="Workspace" Label="记录" Orientation="Horizontal">
                     <TabControl x:Name="WorkspaceTabs" SelectedIndex="{Binding ActiveTab}" SelectionChanged="TabChanged">
@@ -71,6 +70,8 @@
                                     </StackPanel.Resources>
                                     <TextBlock Text="{Binding Repository.Name}" FontSize="17" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                     <TextBlock Text="位置" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding Repository.Path}" Style="{StaticResource InfoValue}" />
+                                    <StackPanel>
+                                    <StackPanel.Style><Style TargetType="StackPanel"><Style.Triggers><DataTrigger Binding="{Binding IsWorkspaceLoading}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></StackPanel.Style>
                                     <TextBlock Text="当前分支" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding Branch}" Style="{StaticResource InfoValue}" />
                                     <TextBlock Text="远程地址" Style="{StaticResource InfoLabel}" />
                                     <ItemsControl x:Name="RemoteAddressList" ItemsSource="{Binding RemoteAddresses}" Visibility="{Binding HasRemoteAddresses, Converter={StaticResource BoolVisibility}}">
@@ -98,6 +99,7 @@
                                     <TextBlock Text="最近提交" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding History[0].Subject, FallbackValue=暂无提交}" Style="{StaticResource InfoValue}" />
                                     <TextBlock Text="说明文件" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding Readme.FileName, FallbackValue=无}" Style="{StaticResource InfoValue}" />
                                     <StackPanel Orientation="Horizontal" Margin="0,22,0,0"><Button Content="打开文件夹" Style="{StaticResource WorkspaceButton}" Margin="0,0,8,0" Click="OpenRepositoryFolderClicked" /><Button Content="打开说明文件" Style="{StaticResource WorkspaceButton}" Click="OpenReadmeClicked" IsEnabled="{Binding HasReadme}" views:BusyFeedback.DeferDisabledLook="False" /></StackPanel>
+                                    </StackPanel>
                                 </StackPanel>
                             </ScrollViewer>
                         </TabItem>
@@ -131,11 +133,10 @@
                     <layout:CollapsiblePane Grid.Column="2" SettingsKey="Preview" Label="差异" Orientation="Horizontal">
                     <Grid>
                     <views:DiffViewer Rows="{Binding DiffRows}" Comparison="{Binding Comparison}"><views:DiffViewer.Style><Style TargetType="views:DiffViewer"><Style.Triggers><DataTrigger Binding="{Binding IsHistoryLoading}" Value="True"><DataTrigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="0.55" BeginTime="0:0:0.25" Duration="0:0:0.12" /></Storyboard></BeginStoryboard></DataTrigger.EnterActions><DataTrigger.ExitActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.08" /></Storyboard></BeginStoryboard></DataTrigger.ExitActions></DataTrigger><DataTrigger Binding="{Binding ActiveTab}" Value="{x:Static vm:MainViewModel.ReadmeTab}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></views:DiffViewer.Style></views:DiffViewer>
-                    <views:ReadmeView Document="{Binding Readme}"><views:ReadmeView.Style><Style TargetType="views:ReadmeView"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding ActiveTab}" Value="{x:Static vm:MainViewModel.ReadmeTab}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></views:ReadmeView.Style></views:ReadmeView>
+                    <views:ReadmeView Document="{Binding Readme}" IsLoading="{Binding IsWorkspaceLoading}"><views:ReadmeView.Style><Style TargetType="views:ReadmeView"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding ActiveTab}" Value="{x:Static vm:MainViewModel.ReadmeTab}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></views:ReadmeView.Style></views:ReadmeView>
                     </Grid>
                     </layout:CollapsiblePane>
                 </Grid>
-                <TextBlock Grid.Row="1" Grid.RowSpan="2" Text="{Binding Status}" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="480" IsHitTestVisible="False" Visibility="{Binding IsWorkspaceLoadingHintVisible, Converter={StaticResource BoolVisibility}}" />
                 <TextBlock Grid.Row="2" Text="添加仓库" FontSize="20" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding HasRepository}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
             </Grid>
         </Grid>

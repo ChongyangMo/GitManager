@@ -21,7 +21,8 @@ public sealed partial class MainViewModel
     {
         _workspaceCache.Remove(root);
         _workspaceCache.Add(root, view);
-        while (_workspaceCache.Count > 8)
+        // 已加入列表的仓库保留页面，避免仓库稍多时来回切换不断淘汰缓存。
+        while (_workspaceCache.Count > Math.Max(8, Repositories.Count))
             _workspaceCache.Remove(_workspaceCache.Keys.First(path => !string.Equals(path, Repository?.Path, StringComparison.OrdinalIgnoreCase)));
     }
 
