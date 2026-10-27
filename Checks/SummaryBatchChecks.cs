@@ -18,7 +18,7 @@ internal static partial class Program
             .Output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
         if (paths.Length == 0) throw new InvalidOperationException("真实提交没有文件改动。");
         // 仅重放该真实提交涉及的文件，不修改原仓库，不生成虚构差异。
-        string root = Path.Combine(Path.GetTempPath(), "GitManagerActualBatchChecks", Guid.NewGuid().ToString("N"));
+        string root = CheckDirectories.Create("ActualBatchChecks");
         Directory.CreateDirectory(root);
         await Git.InitializeAsync(root);
         await Git.SaveIdentityAsync(root, "ChongyangMo", ChecksCommitEmail);

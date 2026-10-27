@@ -23,7 +23,7 @@ internal static partial class Program
 
     private static async Task RunAutoUploadChecksAsync()
     {
-        string directory = Path.Combine(Path.GetTempPath(), "GitManagerAutoUploadChecks", Guid.NewGuid().ToString("N"));
+        string directory = CheckDirectories.Create("AutoUploadChecks");
         string local = Path.Combine(directory, "本地"), remote = Path.Combine(directory, "远程.git"), other = Path.Combine(directory, "另一台电脑");
         Directory.CreateDirectory(local);
         await Git.InitializeAsync(local);

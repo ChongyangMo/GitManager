@@ -23,7 +23,7 @@ internal static partial class Program
         original.Repositories.Add(legacy);
         original.Repositories.Add(actual);
         original.LastRepository = legacy;
-        string checkDirectory = Path.Combine(Directory.GetCurrentDirectory(), "artifacts", "repository-paths");
+        string checkDirectory = CheckDirectories.Create("repository-paths");
         Directory.CreateDirectory(checkDirectory);
         string checkFile = Path.Combine(checkDirectory, "settings.json");
         File.WriteAllText(checkFile, JsonSerializer.Serialize(original));

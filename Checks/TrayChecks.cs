@@ -12,7 +12,7 @@ internal static partial class Program
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         foreach (string theme in new[] { "Light", "Controls", "Workspace", "VersionTemplates" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"/GitManager;component/Themes/{theme}.xaml", UriKind.Relative) });
-        var settings = new SettingsStore(Path.Combine(Path.GetTempPath(), "GitManagerChecks", Guid.NewGuid().ToString("N"), "settings.json"));
+        var settings = new SettingsStore(Path.Combine(CheckDirectories.Create("Checks"), "settings.json"));
         var viewModel = new MainViewModel(settings);
         var window = new MainWindow(viewModel)
         {

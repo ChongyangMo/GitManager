@@ -21,7 +21,7 @@ internal static partial class Program
         Check(RepositoryRemoteGroup.FromRemote(@"C:\repos\shared.git", "", "") == RepositoryRemoteGroup.LocalPath
             && RepositoryRemoteGroup.FromRemote("file:///C:/repos/shared.git", "", "") == RepositoryRemoteGroup.LocalPath, "本地路径远程归入本地路径");
 
-        string root = Path.Combine(Path.GetTempPath(), "GitManagerRemoteGroupChecks", Guid.NewGuid().ToString("N"));
+        string root = CheckDirectories.Create("RemoteGroupChecks");
         string Repo(string name, params string[][] commands)
         {
             string path = Path.Combine(root, name);
@@ -44,7 +44,7 @@ internal static partial class Program
         Exception? failure = null;
         app.Startup += async (_, _) =>
         {
-            var settings = new SettingsStore(Path.Combine(Path.GetTempPath(), "GitManagerChecks", Guid.NewGuid().ToString("N"), "settings.json"));
+            var settings = new SettingsStore(Path.Combine(CheckDirectories.Create("Checks"), "settings.json"));
             settings.Value.RepositoryDiscovery.Enabled = false;
             settings.Value.Repositories = [githubB, local, gitlab, cloud, githubE, upstream];
             using var viewModel = new MainViewModel(settings);

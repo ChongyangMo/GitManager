@@ -17,7 +17,7 @@ internal static partial class Program
         Exception? failure = null;
         app.Startup += async (_, _) =>
         {
-            var settings = new SettingsStore(Path.Combine(Path.GetTempPath(), "GitManagerChecks", Guid.NewGuid().ToString("N"), "settings.json"));
+            var settings = new SettingsStore(Path.Combine(CheckDirectories.Create("Checks"), "settings.json"));
             settings.Value.RepositoryDiscovery.Enabled = false;
             settings.Value.Repositories = repositories.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             using var viewModel = new MainViewModel(settings);
@@ -55,7 +55,7 @@ internal static partial class Program
                 await viewModel.ShowChangeAsync();
                 Check(viewModel.IsIdle, "后台完成后可读取文件差异");
 
-                string empty = Path.Combine(Path.GetTempPath(), "GitManagerChecks", Guid.NewGuid().ToString("N"));
+                string empty = CheckDirectories.Create("Checks");
                 Directory.CreateDirectory(empty);
                 await Git.InitializeAsync(empty);
                 viewModel.Repositories.Add(new(empty));

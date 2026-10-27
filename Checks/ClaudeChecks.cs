@@ -12,7 +12,7 @@ internal static partial class Program
         bool loggedIn = await ClaudeClient.IsLoggedInAsync(executable, default);
         Console.WriteLine($"Claude Code：{executable}，登录状态 {(loggedIn ? "已登录" : "未登录")}");
         if (!loggedIn) return;
-        var usage = new QwenUsageStore(Path.Combine(Path.GetTempPath(), "GitManagerClaudeChecks", Guid.NewGuid().ToString("N")));
+        var usage = new QwenUsageStore(CheckDirectories.Create("ClaudeChecks"));
         try
         {
             var reply = await ClaudeClient.GenerateAsync(new ClaudeOptions(), executable, "文件：README.md（已修改，+1 -0）\n+ 增加安装说明一行", default, usage);

@@ -6,7 +6,7 @@ internal static partial class Program
 {
     private static async Task RunCommitIdentityChecksAsync(string source)
     {
-        string clone = Path.Combine(Path.GetDirectoryName(source)!, "GitManager", "artifacts", "email-check-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+        string clone = CheckDirectories.Create("email-check");
         await Git.CloneAsync(source, clone);
         Check((await Git.ReadAsync(clone)).UserEmail == ChecksCommitEmail, "界面显示统一提交邮箱");
         string name = (await Git.ReadAsync(clone)).UserName;

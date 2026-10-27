@@ -62,10 +62,10 @@
 
 ```powershell
 dotnet build .\GitManager.csproj -c Release
-dotnet publish .\GitManager.csproj -c Release -r win-x64 --self-contained true -o .\publish\win-x64
+dotnet publish .\GitManager.csproj -c Release -r win-x64 --self-contained false -o .\publish\win-x64
 ```
 
-发布目录中的 `GitManager.exe` 可直接启动，Git 仍需在本机安装。文本差异预览支持不超过 2 MiB 的 UTF-8 文件，最多显示 10000 行；二进制文件只显示状态。
+发布为依赖框架版本，运行前需在本机安装 .NET 10 桌面运行时（Microsoft.WindowsDesktop.App）和 Git。文本差异预览支持不超过 2 MiB 的 UTF-8 文件，最多显示 10000 行；二进制文件只显示状态。
 
 ## 目录
 

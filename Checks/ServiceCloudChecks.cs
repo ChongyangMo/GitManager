@@ -54,7 +54,7 @@ internal static partial class Program
         Check(state.SourceLabel == "服务云", "远程来源显示服务云");
         string advertised = (await Runner.RunAsync(root, ["ls-remote", target.RemoteName, "refs/heads/" + target.Name])).Output;
         Check(advertised.StartsWith(state.LocalHead!.Hash + "\t", StringComparison.Ordinal), "服务端实际分支哈希与本地一致");
-        string clone = Path.Combine(Path.GetDirectoryName(root)!, "GitManager", "artifacts", "servicecloud-clone-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+        string clone = CheckDirectories.Create("servicecloud-clone");
         await Git.CloneAsync(url, clone, settings.Value.ServiceCloud.ProxyUrl, username);
         await Git.ConnectServiceCloudAsync(clone, cloud.BaseUri.AbsoluteUri, username, url, settings.Value.ServiceCloud.ProxyUrl);
         var cloned = await Git.ReadVersionsAsync(clone);

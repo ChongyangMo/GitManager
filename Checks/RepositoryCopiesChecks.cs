@@ -27,8 +27,10 @@ internal static partial class Program
             {
                 string output = Path.Combine(Directory.GetCurrentDirectory(), "artifacts", "repository-copies");
                 Directory.CreateDirectory(output);
+                string scratch = CheckDirectories.Create("repository-copies");
+                Directory.CreateDirectory(scratch);
                 var actual = new SettingsStore();
-                string settingsPath = Path.Combine(output, "settings-check.json");
+                string settingsPath = Path.Combine(scratch, "settings-check.json");
                 File.WriteAllText(settingsPath, JsonSerializer.Serialize(actual.Value));
                 using var model = new MainViewModel(new SettingsStore(settingsPath));
                 foreach (var bookmark in model.Repositories)
@@ -66,7 +68,7 @@ internal static partial class Program
                 Check(((MenuItem)container.ContextMenu.Items[0]).CommandParameter == sameName[1], "右键菜单针对点击项，不误用当前选中仓库");
                 container.ContextMenu.IsOpen = false;
 
-                var invalid = await new RepositoryCopyReader(Git).ReadAsync([new RepositoryBookmark(Path.Combine(output, "missing")), sameName[0]]);
+                var invalid = await new RepositoryCopyReader(Git).ReadAsync([new RepositoryBookmark(Path.Combine(scratch, "missing")), sameName[0]]);
                 Check(invalid.Copies[0].Error.Length > 0 && invalid.FileStatus == "文件比较未完成" && !invalid.Copies[0].CanDeleteLocal,
                     "目录读取失败明确显示未知，不伪报内容相同");
                 bool guarded = false;
@@ -75,7 +77,7 @@ internal static partial class Program
                 Check(guarded, "删除保护阻止连带删除其他仓库");
 
                 // 用真实仓库的副本制造确定的改动：修改一个跟踪文件、新增一个文件，不依赖用户列表里恰好有内容不同的仓库。
-                string clone = Path.Combine(output, "recycle-check");
+                string clone = Path.Combine(scratch, "recycle-check");
                 await Runner.RunAsync(null, ["clone", "--local", "--no-hardlinks", "--", sameName[0].Path, clone]);
                 string tracked = (await Runner.RunAsync(clone, ["ls-files", "-z"])).Output.Split('\0', StringSplitOptions.RemoveEmptyEntries)
                     .First(path => File.Exists(Path.Combine(clone, path)));
@@ -90,7 +92,7 @@ internal static partial class Program
                 await deletion.RecycleAsync(new RepositoryBookmark(clone), [sameName[0].Path]);
                 Check(!Directory.Exists(clone) && Directory.Exists(sameName[0].Path), "实际副本进入回收站，原仓库完整保留");
 
-                var isolatedSettings = new SettingsStore(Path.Combine(output, "removal-check.json"));
+                var isolatedSettings = new SettingsStore(Path.Combine(scratch, "removal-check.json"));
                 isolatedSettings.Value.Repositories = [sameName[0].Path];
                 isolatedSettings.Save();
                 using var removal = new MainViewModel(isolatedSettings);

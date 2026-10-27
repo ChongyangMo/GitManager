@@ -8,7 +8,7 @@ internal static partial class Program
 {
     private static async Task RunDiscoveryChecksAsync()
     {
-        string root = Path.Combine(Path.GetTempPath(), "GitManagerDiscoveryChecks", Guid.NewGuid().ToString("N"));
+        string root = CheckDirectories.Create("DiscoveryChecks");
         string primary = Path.Combine(root, "主仓库"), nested = Path.Combine(primary, "tools", "嵌套仓库");
         string ignored = Path.Combine(root, "排除仓库"), dependency = Path.Combine(root, "node_modules", "依赖仓库");
         string linked = Path.Combine(root, "工作树"), invalid = Path.Combine(root, "无效标记");

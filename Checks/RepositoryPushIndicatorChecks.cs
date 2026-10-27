@@ -18,7 +18,7 @@ internal static partial class Program
         Exception? failure = null;
         app.Startup += async (_, _) =>
         {
-            var settings = new SettingsStore(Path.Combine(Path.GetTempPath(), "GitManagerChecks", Guid.NewGuid().ToString("N"), "settings.json"));
+            var settings = new SettingsStore(Path.Combine(CheckDirectories.Create("Checks"), "settings.json"));
             settings.Value.RepositoryDiscovery.Enabled = false;
             settings.Value.Repositories = repositories.ToList();
             using var model = new MainViewModel(settings);

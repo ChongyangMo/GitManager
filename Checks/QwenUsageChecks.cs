@@ -28,10 +28,10 @@ internal static partial class Program
                 var second = new QwenUsageStore(QwenUsageStore.Default.DirectoryPath, SettingsStore.PackagedDataDirectories()).Read(logs);
                 Check(first.Entries.Select(entry => entry.Id).SequenceEqual(second.Entries.Select(entry => entry.Id)), "重复导入和重新读取不增加记录");
                 var actual = first.Entries.First();
-                var isolated = new QwenUsageStore(Path.Combine(Path.GetTempPath(), "GitManagerUsageChecks", Guid.NewGuid().ToString("N")));
+                var isolated = new QwenUsageStore(CheckDirectories.Create("UsageChecks"));
                 isolated.Save(actual); isolated.Save(actual);
                 Check(isolated.Read().Entries.Count == 1, "同一次调用的重复保存保持唯一");
-                string packaged = Path.Combine(Path.GetTempPath(), "GitManagerUsageChecks", Guid.NewGuid().ToString("N"));
+                string packaged = CheckDirectories.Create("UsageChecks");
                 var other = new QwenUsageStore(Path.Combine(packaged, "qwen-usage"));
                 other.Save(actual);
                 other.Save(new QwenUsageEntry { Id = Guid.NewGuid().ToString("N"), Time = actual.Time.AddMinutes(-1), Model = actual.Model,
@@ -39,7 +39,7 @@ internal static partial class Program
                 var merged = new QwenUsageStore(isolated.DirectoryPath, [packaged]).Read();
                 Check(merged.Entries.Count == 2 && merged.UnreadableCount == 0, "同时读取打包启动目录的记录，同一调用只计一次");
                 Check(!JsonSerializer.Serialize(first.Entries).Contains("ApiKey", StringComparison.OrdinalIgnoreCase), "记录不包含密钥字段");
-                string legacyDirectory = Path.Combine(Path.GetTempPath(), "GitManagerUsageChecks", Guid.NewGuid().ToString("N"));
+                string legacyDirectory = CheckDirectories.Create("UsageChecks");
                 Directory.CreateDirectory(legacyDirectory);
                 string legacyId = Guid.NewGuid().ToString("N");
                 File.WriteAllText(Path.Combine(legacyDirectory, legacyId + ".json"), "{\"Id\":\"" + legacyId + "\",\"Time\":\"2026-10-21T09:00:00+08:00\",\"Model\":\"qwen3.8-flash\",\"Result\":\"成功\",\"Cost\":{\"Minimum\":0.1,\"Maximum\":0.1,\"Detail\":\"旧记录\"}}");

@@ -67,17 +67,18 @@ internal static partial class Program
             if (args.Length == 3 && args[0] == "--ui") { RenderPreview(args[1], args[2]); return 0; }
             if (args.Length == 1 && args[0] == "--versions") { RunVersionChecksAsync().GetAwaiter().GetResult(); return 0; }
             if (args.Length == 1 && args[0] == "--auto-upload") { RunAutoUploadChecks(); return 0; }
-            string testRoot = RunChecksAsync().GetAwaiter().GetResult();
-            Console.WriteLine($"检查通过，共 {_count} 项。真实临时仓库：{testRoot}");
+            RunChecksAsync().GetAwaiter().GetResult();
+            Console.WriteLine($"检查通过，共 {_count} 项。");
             if (args.Length == 2) RenderPreview(args[0], args[1]);
             return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine("检查失败：" + ex); return 1; }
+        finally { CheckDirectories.Clean(); }
     }
 
-    private static async Task<string> RunChecksAsync()
+    private static async Task RunChecksAsync()
     {
-        string root = Path.Combine(Path.GetTempPath(), "GitManagerChecks", Guid.NewGuid().ToString("N"));
+        string root = CheckDirectories.Create("Checks");
         Directory.CreateDirectory(root);
         await Git.InitializeAsync(root);
         await Git.SaveIdentityAsync(root, "GitManager 校验", "gitmanager-checks@example.invalid");
@@ -164,7 +165,6 @@ internal static partial class Program
         try { await Git.OpenAsync(Path.Combine(root, "cache")); } catch (InvalidOperationException) { parentBlocked = true; }
         Check(parentBlocked, "子目录不会误识别为独立仓库");
         await CheckDiffEdgesAsync(root);
-        return root;
     }
 
     private static async Task CheckDiffEdgesAsync(string root)
@@ -202,7 +202,7 @@ internal static partial class Program
     {
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         foreach (string theme in new[] { "Light", "Controls", "Workspace", "VersionTemplates" }) app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"/GitManager;component/Themes/{theme}.xaml", UriKind.Relative) });
-        var store = new SettingsStore(Path.Combine(Path.GetTempPath(), "GitManagerChecks", Guid.NewGuid().ToString("N"), "settings.json"));
+        var store = new SettingsStore(Path.Combine(CheckDirectories.Create("Checks"), "settings.json"));
         var viewModel = new MainViewModel(store);
         var window = new GitManager.MainWindow(viewModel) { ShowInTaskbar = false, ShowActivated = false, WindowStartupLocation = WindowStartupLocation.Manual, Left = -30000, Top = -30000 };
         int errors = 0;

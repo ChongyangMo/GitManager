@@ -20,7 +20,7 @@ internal static partial class Program
         Exception? failure = null;
         app.Startup += async (_, _) =>
         {
-            var store = new SettingsStore(Path.Combine(Path.GetTempPath(), "GitManagerChecks", Guid.NewGuid().ToString("N"), "settings.json"));
+            var store = new SettingsStore(Path.Combine(CheckDirectories.Create("Checks"), "settings.json"));
             store.Value.RepositoryDiscovery.Enabled = false;
             using var vm = new MainViewModel(store);
             var window = new MainWindow(vm) { ShowInTaskbar = false, ShowActivated = false, Left = -30000, Top = -30000, WindowStartupLocation = WindowStartupLocation.Manual };
@@ -71,7 +71,7 @@ internal static partial class Program
 
     private static async Task CheckHistoryContentAsync()
     {
-        string root = Path.Combine(Path.GetTempPath(), "GitManagerHistoryChecks", Guid.NewGuid().ToString("N"));
+        string root = CheckDirectories.Create("HistoryChecks");
         Directory.CreateDirectory(root);
         await Git.InitializeAsync(root);
         await Git.SaveIdentityAsync(root, "历史校验", "history-checks@example.invalid");

@@ -24,7 +24,7 @@ internal static partial class Program
         var binary = Of([0, 1, 13, 10, 2]);
         Check(binary.Content == binary.Hash && binary.LineEnding.Length == 0 && Of([0, 1, 10, 2]).Content != binary.Content, "二进制文件不做换行归一");
 
-        string root = Path.Combine(Path.GetTempPath(), "GitManagerChecks", Guid.NewGuid().ToString("N"));
+        string root = CheckDirectories.Create("Checks");
         string source = Path.Combine(root, "source"), windows = Path.Combine(root, "copy-crlf"), unix = Path.Combine(root, "copy-lf");
         Directory.CreateDirectory(source);
         await Git.InitializeAsync(source);

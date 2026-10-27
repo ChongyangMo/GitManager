@@ -8,7 +8,7 @@ internal static partial class Program
 {
     private static async Task RunLocalDeletionChecksAsync()
     {
-        string root = Path.Combine(Path.GetTempPath(), "GitManagerChecks", Guid.NewGuid().ToString("N"));
+        string root = CheckDirectories.Create("Checks");
         string main = Path.Combine(root, "main"), worktrees = Path.Combine(main, ".claude", "worktrees");
         string merged = Path.Combine(worktrees, "merged"), unmerged = Path.Combine(worktrees, "unmerged"), stale = Path.Combine(root, "stale");
         Directory.CreateDirectory(main);

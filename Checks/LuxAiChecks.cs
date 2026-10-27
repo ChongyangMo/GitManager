@@ -116,7 +116,7 @@ internal static partial class Program
         if (LuxAiCredentials.Read(options) is null) throw new LuxAiLoginRequiredException();
         var selected = (await Git.ReadChangesAsync(root)).Where(file => paths.Contains(file.Path, StringComparer.Ordinal)).ToArray();
         if (selected.Length != paths.Length) throw new InvalidOperationException("请指定实际存在未提交改动的文件。");
-        string directory = Path.Combine(Directory.GetCurrentDirectory(), "work", "luxai-live-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+        string directory = CheckDirectories.Create("luxai-live");
         Directory.CreateDirectory(directory);
         var settings = new SettingsStore(Path.Combine(directory, "settings.json"));
         settings.Value.Qwen.Enabled = true;

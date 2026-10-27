@@ -20,7 +20,7 @@ internal static partial class Program
         Exception? failure = null;
         app.Startup += async (_, _) =>
         {
-            var store = new SettingsStore(Path.Combine(Path.GetTempPath(), "GitManagerChecks", Guid.NewGuid().ToString("N"), "settings.json"));
+            var store = new SettingsStore(Path.Combine(CheckDirectories.Create("Checks"), "settings.json"));
             store.Value.RepositoryDiscovery.Enabled = false;
             store.Value.Qwen.Enabled = qwenLive;
             using var vm = new MainViewModel(store);
@@ -137,7 +137,7 @@ internal static partial class Program
 
     private static async Task CheckLocalSummaryFactsAsync()
     {
-        string root = Path.Combine(Path.GetTempPath(), "GitManagerLocalSummaryChecks", Guid.NewGuid().ToString("N"));
+        string root = CheckDirectories.Create("LocalSummaryChecks");
         Directory.CreateDirectory(root);
         await Git.InitializeAsync(root);
         await Git.SaveIdentityAsync(root, "本地规则校验", "local-summary@example.invalid");

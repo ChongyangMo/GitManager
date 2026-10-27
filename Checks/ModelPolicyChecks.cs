@@ -44,7 +44,7 @@ internal static partial class Program
 
     private static async Task RunModelPolicyChecksAsync(string[] actualRepositories)
     {
-        string root = Path.Combine(Path.GetTempPath(), "GitManagerModelPolicyChecks", Guid.NewGuid().ToString("N"));
+        string root = CheckDirectories.Create("ModelPolicyChecks");
         Directory.CreateDirectory(root);
         await Git.InitializeAsync(root);
         var settings = new SettingsStore(Path.Combine(root, "settings.json"));

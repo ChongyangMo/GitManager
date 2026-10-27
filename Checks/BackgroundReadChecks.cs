@@ -17,7 +17,7 @@ internal static partial class Program
         Exception? failure = null;
         app.Startup += async (_, _) =>
         {
-            var settings = new SettingsStore(Path.Combine(Path.GetTempPath(), "GitManagerChecks", Guid.NewGuid().ToString("N"), "settings.json"));
+            var settings = new SettingsStore(Path.Combine(CheckDirectories.Create("Checks"), "settings.json"));
             settings.Value.Repositories = repositories.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             settings.Value.AutoUpload.DisabledRepositories = settings.Value.Repositories.ToList();
             settings.Value.GitHub.CommitEmail = ChecksCommitEmail;

@@ -16,7 +16,7 @@ internal static partial class Program
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         foreach (string theme in new[] { "Dark", "Controls", "Workspace", "VersionTemplates" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"/GitManager;component/Themes/{theme}.xaml", UriKind.Relative) });
-        var store = new SettingsStore(Path.Combine(Path.GetTempPath(), "GitManagerChecks", Guid.NewGuid().ToString("N"), "settings.json"));
+        var store = new SettingsStore(Path.Combine(CheckDirectories.Create("Checks"), "settings.json"));
         store.Value.RepositoryDiscovery.Enabled = false;
         var model = new MainViewModel(store);
         var window = new MainWindow(model) { ShowInTaskbar = false, ShowActivated = false, Left = -30000, Top = -30000, WindowStartupLocation = WindowStartupLocation.Manual };

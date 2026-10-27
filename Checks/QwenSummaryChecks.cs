@@ -21,7 +21,7 @@ internal static partial class Program
         {
             try
             {
-                string root = Path.Combine(Path.GetTempPath(), "GitManagerQwenChecks", Guid.NewGuid().ToString("N"));
+                string root = CheckDirectories.Create("QwenChecks");
                 Directory.CreateDirectory(root);
                 await Git.InitializeAsync(root);
                 await Git.SaveIdentityAsync(root, "ChongyangMo", "checks@example.invalid");

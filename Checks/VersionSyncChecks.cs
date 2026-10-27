@@ -7,7 +7,7 @@ internal static partial class Program
 {
     private static async Task RunVersionChecksAsync()
     {
-        string directory = Path.Combine(Path.GetTempPath(), "GitManagerVersionChecks", Guid.NewGuid().ToString("N"));
+        string directory = CheckDirectories.Create("VersionChecks");
         string local = Path.Combine(directory, "本地"), remote = Path.Combine(directory, "远程.git"), other = Path.Combine(directory, "另一台电脑");
         Directory.CreateDirectory(local);
         await Git.InitializeAsync(local);

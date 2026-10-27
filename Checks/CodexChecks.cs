@@ -9,7 +9,7 @@ internal static partial class Program
 {
     private static async Task RunCodexLiveAsync(string repository, string[] paths)
     {
-        var settings = new SettingsStore(Path.Combine(Path.GetTempPath(), "GitManagerCodexChecks", Guid.NewGuid().ToString("N"), "settings.json"));
+        var settings = new SettingsStore(Path.Combine(CheckDirectories.Create("CodexChecks"), "settings.json"));
         settings.Value.Claude.Enabled = false;
         settings.Value.Codex = new();
         settings.Value.Qwen.Enabled = true;
