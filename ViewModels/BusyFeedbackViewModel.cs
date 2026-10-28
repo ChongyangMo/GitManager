@@ -10,7 +10,7 @@ public sealed partial class MainViewModel
     private bool _busyFeedbackVisible;
     private bool IsLocked => _busy;
     public bool IsBusyFeedbackDeferred => IsLocked && !_busyFeedbackVisible;
-    public bool IsBusyProgressVisible => _busy && _busyFeedbackVisible;
+    public bool IsBusyProgressVisible => _busy && _busyFeedbackVisible || _autoUploadWriteRoot is not null;
 
     private void UpdateBusyFeedback()
     {

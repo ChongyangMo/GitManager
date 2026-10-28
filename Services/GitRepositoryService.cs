@@ -72,7 +72,8 @@ public sealed partial class GitRepositoryService(GitRunner runner, GitHub.GitHub
 
     public async Task<List<ChangedFile>> ReadChangesAsync(string root, CancellationToken cancellationToken = default)
     {
-        string output = (await Runner.RunAsync(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all"], cancellationToken: cancellationToken)).Output;
+        // 状态读取不刷新磁盘索引，允许用户浏览时后台同时提交。
+        string output = (await Runner.RunAsync(root, ["--no-optional-locks", "status", "--porcelain=v1", "-z", "--untracked-files=all"], cancellationToken: cancellationToken)).Output;
         string[] entries = output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
         List<ChangedFile> result = [];
         for (int i = 0; i < entries.Length; i++)

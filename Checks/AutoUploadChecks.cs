@@ -10,10 +10,12 @@ internal static partial class Program
     private static void RunAutoUploadChecks()
     {
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        foreach (string theme in new[] { "Dark", "Controls", "Workspace", "VersionTemplates" })
+            app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"/GitManager;component/Themes/{theme}.xaml", UriKind.Relative) });
         Exception? failure = null;
         app.Startup += async (_, _) =>
         {
-            try { await RunAutoUploadChecksAsync(); }
+            try { await RunAutoUploadChecksAsync(); await RunAutoUploadResponsivenessChecksAsync(); }
             catch (Exception ex) { failure = ex; }
             finally { app.Shutdown(); }
         };
@@ -52,15 +54,18 @@ internal static partial class Program
 
         settings.Value.AutoUpload.QuietSeconds = 0;
         await File.WriteAllTextAsync(Path.Combine(local, "新增.txt"), "自动上传的新文件\n");
+        model.CommitMessage = "自动上传期间保留的草稿";
         await model.RunAutoUploadAsync();
+        await WaitWorkspaceReadsAsync(model);
         var state = await Git.ReadVersionsAsync(local);
         Check((await Git.ReadChangesAsync(local)).Count == 0 && state.LocalHead!.Hash == state.RemoteHead?.Hash && state.Ahead == 0,
             "改动停止后自动提交全部文件并推送到远程");
         Check(model.AutoUploadStatus.Contains("已提交 2 个文件") && model.Changes.Count == 0, "当前仓库页面显示自动上传结果并刷新改动");
+        Check(model.CommitMessage == "自动上传期间保留的草稿" && model.CanWriteRepository, "自动上传完成后保留草稿并恢复写操作");
         Console.WriteLine("自动上传状态：" + model.AutoUploadStatus);
 
         await model.RunAutoUploadAsync();
-        Check((await Git.ReadVersionsAsync(local)).LocalHead!.Hash == state.LocalHead.Hash, "没有新改动时不产生空提交");
+        Check((await Git.ReadVersionsAsync(local)).LocalHead!.Hash == state.LocalHead!.Hash, "没有新改动时不产生空提交");
 
         await Git.CloneAsync(remote, other);
         await Git.SaveIdentityAsync(other, "另一端校验", "other-checks@example.invalid");

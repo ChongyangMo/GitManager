@@ -9,6 +9,11 @@ public sealed partial class MainViewModel
     public async Task<bool> RemoveRepositoryCopyAsync(RepositoryBookmark bookmark, bool deleteLocal,
         Func<IReadOnlyList<DirectoryLockHolder>, bool>? confirmRelease = null)
     {
+        if (string.Equals(_autoUploadWriteRoot, bookmark.Path, StringComparison.OrdinalIgnoreCase))
+        {
+            Status = "此仓库正在自动上传，请完成后再移除";
+            return false;
+        }
         bool removed = false;
         string? result = null;
         await ExecuteAsync(deleteLocal ? "正在删除本地仓库" : "正在移除仓库记录", async () =>

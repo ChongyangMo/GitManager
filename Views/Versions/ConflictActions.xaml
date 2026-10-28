@@ -7,7 +7,7 @@
                 <Button Content="编辑文件" Click="EditClicked" Style="{StaticResource QuietButton}" />
                 <Button Content="标记已解决" Tag="edited" Click="ResolveClicked" Style="{StaticResource QuietButton}" />
             </WrapPanel>
-            <Button Content="取消合并" Click="AbortClicked" Style="{StaticResource QuietButton}" HorizontalAlignment="Left" />
+            <Button Content="取消合并" IsEnabled="{Binding CanWriteRepository}" Click="AbortClicked" Style="{StaticResource QuietButton}" HorizontalAlignment="Left" />
         </StackPanel>
     </Border>
 </UserControl>

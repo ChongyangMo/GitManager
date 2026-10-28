@@ -17,7 +17,7 @@ public sealed partial class MainViewModel
     private void SetWorkspaceLoading(bool value)
     {
         _workspaceLoading = value;
-        Notify(nameof(IsWorkspaceLoading)); Notify(nameof(CanOperate)); UpdateBusyFeedback();
+        Notify(nameof(IsWorkspaceLoading)); Notify(nameof(CanOperate)); Notify(nameof(CanWriteRepository)); UpdateBusyFeedback();
     }
 
     public Task OpenRepositoryAsync(string path)

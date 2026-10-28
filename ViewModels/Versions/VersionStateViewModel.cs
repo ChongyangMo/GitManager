@@ -27,7 +27,7 @@ public sealed partial class MainViewModel
     public string RemoteVersionHash => _versions?.RemoteHead?.ShortHash ?? (_versions?.HasRemote == true ? "未获取或分支不存在" : "未连接");
     public string RemoteVersionDetail => _versions?.RemoteHead?.Subject ?? "";
     public bool IsMerging => _versions?.IsMerging == true;
-    public bool CanResolveSelected => IsMerging && SelectedChange?.IsConflict == true;
+    public bool CanResolveSelected => CanWriteRepository && IsMerging && SelectedChange?.IsConflict == true;
     public bool CanMergeRemote => _versions?.Diverged == true && _versions.HasCommonHistory == true && !IsMerging;
     public string CommitButtonLabel => IsMerging ? "完成合并" : "提交到本地";
     private string FetchKey => Root + "\0" + _versions?.RemoteName + "\0" + _versions?.RemoteUrl;

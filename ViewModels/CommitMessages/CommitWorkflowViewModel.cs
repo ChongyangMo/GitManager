@@ -7,7 +7,7 @@ public sealed partial class MainViewModel
 {
     public Task CommitAsync()
     {
-        if (!CanOperate || _disposed) return Task.CompletedTask;
+        if (!CanWriteRepository || _disposed) return Task.CompletedTask;
         CancelCommitSummary();
         return ExecuteAsync("正在保存本地版本", async () =>
         {

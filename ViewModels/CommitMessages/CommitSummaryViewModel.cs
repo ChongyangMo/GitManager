@@ -26,7 +26,7 @@ public sealed partial class MainViewModel
             Status = "已取消生成";
             return;
         }
-        if (!CanOperate || _disposed) return;
+        if (!CanWriteRepository || _disposed) return;
         var selected = Changes.Where(file => file.Selected).ToArray();
         if (selected.Length == 0)
         {

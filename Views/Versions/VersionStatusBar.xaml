@@ -11,8 +11,8 @@
             </DockPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal">
                 <Button Content="对比" Style="{StaticResource WorkspaceButton}" Click="CompareClicked" Margin="0,0,8,0" />
-                <Button Content="合并远程" Style="{StaticResource WorkspaceButton}" Click="MergeClicked" Margin="0,0,8,0" IsEnabled="{Binding CanMergeRemote}" Visibility="{Binding CanMergeRemote, Converter={StaticResource BoolVisibility}}" />
-                <Button Content="同步" Style="{StaticResource PrimaryButton}" MinHeight="34" Click="SyncClicked" />
+                <Button Content="合并远程" Style="{StaticResource WorkspaceButton}" Click="MergeClicked" Margin="0,0,8,0" IsEnabled="{Binding CanWriteRepository}" Visibility="{Binding CanMergeRemote, Converter={StaticResource BoolVisibility}}" />
+                <Button Content="同步" IsEnabled="{Binding CanWriteRepository}" Style="{StaticResource PrimaryButton}" MinHeight="34" Click="SyncClicked" />
             </StackPanel>
             <TextBlock Grid.Row="1" Text="{Binding SyncStateText}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,7,0,0" />
             <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding FetchStateText}" ToolTip="{Binding FetchError}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,7,0,0" TextTrimming="CharacterEllipsis" />

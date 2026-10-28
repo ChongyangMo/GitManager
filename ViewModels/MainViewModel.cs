@@ -27,12 +27,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     // 工作区标签页顺序，与 MainWindow.xaml 中 TabItem 的排列一致。
     public const int ReadmeTab = 0, ChangesTab = 1, HistoryTab = 2, RemoteTab = 3, VersionTab = 4;
     private int _activeTab;
-    public bool IsBusy { get => _busy; private set { Set(ref _busy, value); Notify(nameof(IsIdle)); Notify(nameof(CanOperate)); UpdateBusyFeedback(); } }
+    public bool IsBusy { get => _busy; private set { Set(ref _busy, value); Notify(nameof(IsIdle)); Notify(nameof(CanOperate)); Notify(nameof(CanWriteRepository)); UpdateBusyFeedback(); } }
     public bool IsIdle => !IsBusy;
     public bool HasRepository => Repository is not null;
     public bool CanOperate => HasRepository && IsIdle && !_workspaceLoading;
     public string Root => Repository?.Path ?? throw new InvalidOperationException("请先选择仓库。");
-    public RepositoryBookmark? Repository { get => _repository; private set { if (Set(ref _repository, value)) SetSummaryCost(null); Notify(nameof(HasRepository)); Notify(nameof(CanOperate)); NotifyAutoUpload(); } }
+    public RepositoryBookmark? Repository { get => _repository; private set { if (Set(ref _repository, value)) SetSummaryCost(null); Notify(nameof(HasRepository)); Notify(nameof(CanOperate)); NotifyAutoUpload(); NotifyAutoUploadActivity(); } }
     public string Status { get => _status; private set => Set(ref _status, value); }
     public string Branch { get => _branch; set => Set(ref _branch, value); }
     public string Remote { get => _remote; private set { if (Set(ref _remote, value)) { Notify(nameof(RemoteAddresses)); Notify(nameof(HasRemoteAddresses)); } } }
@@ -78,6 +78,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public async Task ExecuteAsync(string message, Func<Task> action)
     {
         if (IsBusy) return;
+        if (IsRepositoryAutoUploading)
+        {
+            Status = "当前仓库正在自动上传，请稍后再执行写操作";
+            return;
+        }
         _repositoryOpenGeneration++;
         InvalidateHistoryNavigation();
         IsBusy = true;
@@ -86,7 +91,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             await PauseWorkspaceRefreshAsync();
             await StopBackgroundFetchAsync();
-            await WaitAutoUploadWriteAsync();
             await action();
             if (Status == message) Status = "就绪";
         }

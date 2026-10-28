@@ -18,7 +18,7 @@ public sealed partial class MainViewModel
 
     private void StartBackgroundFetch()
     {
-        if (_disposed || !HasRepository || _versions?.HasRemote != true) return;
+        if (_disposed || !HasRepository || IsRepositoryAutoUploading || _versions?.HasRemote != true) return;
         _backgroundFetchCancellation?.Cancel();
         var cancellation = new CancellationTokenSource();
         _backgroundFetchCancellation = cancellation;
