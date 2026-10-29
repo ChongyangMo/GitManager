@@ -5,7 +5,7 @@ namespace GitManager.Services;
 
 public sealed partial class GitRepositoryService
 {
-    public async Task CommitAsync(string root, IReadOnlyList<ChangedFile> files, string message)
+    public async Task CommitAsync(string root, IReadOnlyList<ChangedFile> files, string message, string? remote = null)
     {
         if (string.IsNullOrWhiteSpace(message)) throw new InvalidOperationException("请填写提交说明。");
         if (files.Count == 0) throw new InvalidOperationException("请勾选需要提交的文件。");
@@ -15,7 +15,7 @@ public sealed partial class GitRepositoryService
         var indexedPaths = (await Run(root, "ls-files", "-z")).Output.Split('\0', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
         string[] stagePaths = paths.Where(path => indexedPaths.Contains(path) || File.Exists(Path.Combine(root, path)) || Directory.Exists(Path.Combine(root, path))).ToArray();
         if (stagePaths.Length > 0) await RunWithPathsAsync(root, ["add", "-A"], stagePaths);
-        await RunWithPathsAsync(root, ["commit", "--only", "-m", message.Trim()], paths);
+        await RunWithPathsAsync(root, ["commit", "--only", "-m", message.Trim()], paths, remote);
         AppLog.Write("已保存本地提交：" + root);
     }
 
@@ -63,7 +63,7 @@ public sealed partial class GitRepositoryService
             throw new InvalidOperationException("请勿在地址中填写密码或令牌，请使用 Git 凭据管理器登录。");
     }
 
-    private async Task RunWithPathsAsync(string root, IEnumerable<string> command, IEnumerable<string> paths)
+    private async Task RunWithPathsAsync(string root, IEnumerable<string> command, IEnumerable<string> paths, string? remote = null)
     {
         string directory = Path.Combine(SettingsStore.DataDirectory, "pathspecs");
         Directory.CreateDirectory(directory);
@@ -72,7 +72,7 @@ public sealed partial class GitRepositoryService
         {
             await File.WriteAllTextAsync(file, string.Join('\0', paths) + '\0', new System.Text.UTF8Encoding(false));
             string[] arguments = command.Concat(["--pathspec-from-file=" + file, "--pathspec-file-nul"]).ToArray();
-            if (arguments[0] == "commit") await RunWithCommitIdentityAsync(root, arguments);
+            if (arguments[0] == "commit") await RunWithCommitIdentityAsync(root, arguments, remote: remote);
             else await Runner.RunAsync(root, arguments);
         }
         finally { if (File.Exists(file)) File.Delete(file); }

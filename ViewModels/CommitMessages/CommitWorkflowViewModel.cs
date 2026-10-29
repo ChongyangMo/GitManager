@@ -12,7 +12,7 @@ public sealed partial class MainViewModel
         return ExecuteAsync("正在保存本地版本", async () =>
         {
             SetSummaryCost(null);
-            if (IsMerging) await Git.FinishMergeAsync(Root, CommitMessage);
+            if (IsMerging) await Git.FinishMergeAsync(Root, CommitMessage, _versions?.RemoteName);
             else
             {
                 var files = (await Git.ReadChangesAsync(Root)).ToArray();
@@ -36,7 +36,7 @@ public sealed partial class MainViewModel
                 CommitMessage = result.Message;
                 AppLog.Write($"已全选并通过{result.Source}总结 {files.Length} 个文件，准备提交");
                 Status = "正在保存本地版本";
-                await Git.CommitAsync(Root, files, result.Message);
+                await Git.CommitAsync(Root, files, result.Message, _versions?.RemoteName);
             }
             CommitMessage = "";
             await RefreshCoreAsync();

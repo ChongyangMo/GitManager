@@ -168,7 +168,7 @@ public partial class MainWindow : Window
     }
     private async void SettingsClicked(object sender, RoutedEventArgs e)
     {
-        List<FormField> fields = [new("Git 程序", ViewModel.Settings.Value.GitExecutablePath, "file"), new("提交邮箱（所有仓库统一，GitHub 关联邮箱）", ViewModel.Settings.Value.GitHub.CommitEmail)];
+        List<FormField> fields = [new("Git 程序", ViewModel.Settings.Value.GitExecutablePath, "file"), new("提交邮箱", ViewModel.HasRepository ? ViewModel.UserEmail : ViewModel.Settings.Value.GitHub.CommitEmail)];
         if (ViewModel.HasRepository) fields.Add(new("本仓库提交姓名", ViewModel.UserName));
         var dialog = new FormWindow("设置", fields.ToArray()) { Owner = this, Validate = () => fields[1].Value.Trim() is var email && email.Contains('@') && !email.Any(char.IsWhiteSpace) ? null : "请填写有效的提交邮箱。" };
         dialog.ShowTheme(ViewModel.Settings.Value.Theme);

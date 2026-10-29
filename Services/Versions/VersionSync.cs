@@ -42,7 +42,7 @@ public sealed partial class GitRepositoryService
                 if (state.RemoteHead is null) throw new InvalidOperationException("远程尚无可合并的版本。");
                 if (state.HasCommonHistory == false) throw new InvalidOperationException("本地和远程没有共同历史，未执行合并或覆盖。");
                 await EnsureCleanForSyncAsync(root);
-                var merge = await RunWithCommitIdentityAsync(root, ["merge", "--no-edit", "--no-overwrite-ignore", state.RemoteHead.Hash], true);
+                var merge = await RunWithCommitIdentityAsync(root, ["merge", "--no-edit", "--no-overwrite-ignore", state.RemoteHead.Hash], true, state.RemoteName);
                 if (merge.ExitCode != 0)
                 {
                     var latest = await ReadVersionsAsync(root, state.Target);

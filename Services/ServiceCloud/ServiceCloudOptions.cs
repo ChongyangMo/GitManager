@@ -5,6 +5,7 @@ public sealed class ServiceCloudOptions
     public string BaseUrl { get; set; } = "";
     public string Username { get; set; } = "";
     public string ProxyUrl { get; set; } = "";
+    public string GitBaseUrl { get; set; } = "";
 }
 
 public sealed record CloudRepository(string Name, bool IsPrivate)

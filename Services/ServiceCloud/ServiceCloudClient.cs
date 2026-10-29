@@ -60,6 +60,18 @@ public sealed class ServiceCloudClient : IDisposable
             .OrderBy(repo => repo.Name, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
+    public async Task<RepositoryCommitIdentity> ReadCommitIdentityAsync(CancellationToken token = default)
+    {
+        using var response = await _http.GetAsync("api/info", token);
+        using var body = await ReadResponseAsync(response, token);
+        var value = body.RootElement;
+        if (!value.TryGetProperty("logged", out var logged) || logged.ValueKind != JsonValueKind.True
+            || !value.TryGetProperty("user", out var user) || !value.TryGetProperty("mail", out var mail)
+            || string.IsNullOrWhiteSpace(user.GetString()) || string.IsNullOrWhiteSpace(mail.GetString()))
+            throw new InvalidOperationException("服务云未返回当前工号的公司邮箱，请检查账号邮箱或在仓库设置中填写。");
+        return new(user.GetString()!, mail.GetString()!);
+    }
+
     public async Task<string> CreateRepositoryAsync(string name, CancellationToken cancellationToken = default)
     {
         name = NormalizeRepositoryName(name);

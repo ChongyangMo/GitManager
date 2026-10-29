@@ -19,7 +19,7 @@ public static class RepositoryRemoteGroup
         return host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ? GitHub : host.ToLowerInvariant();
     }
 
-    private static string? Host(string address)
+    public static string? Host(string address)
     {
         if (string.IsNullOrWhiteSpace(address)) return null;
         string value = address.Trim();

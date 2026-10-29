@@ -1,4 +1,4 @@
-using System.IO;
+using GitManager.Services;
 
 namespace GitManager.Checks;
 
@@ -6,21 +6,39 @@ internal static partial class Program
 {
     private static async Task RunCommitIdentityChecksAsync(string source)
     {
-        string clone = CheckDirectories.Create("email-check");
-        await Git.CloneAsync(source, clone);
-        Check((await Git.ReadAsync(clone)).UserEmail == ChecksCommitEmail, "界面显示统一提交邮箱");
-        string name = (await Git.ReadAsync(clone)).UserName;
-        await Git.SaveIdentityAsync(clone, name, "other-local@example.invalid");
-        string path = Path.Combine(clone, ".gitignore");
-        await File.AppendAllTextAsync(path, "\n");
-        await Git.CommitAsync(clone, (await Git.ReadChangesAsync(clone)).Where(file => file.Path == ".gitignore").ToArray(), "验证统一邮箱提交");
-        string identity = (await Runner.RunAsync(clone, ["log", "-1", "--format=%ae%x00%ce"])).Output.TrimEnd('\r', '\n');
-        Check(identity == ChecksCommitEmail + "\0" + ChecksCommitEmail, "仓库本地邮箱不同时，作者与提交者仍使用统一邮箱");
+        var settings = new SettingsStore();
+        var git = new GitRepositoryService(Runner, settings.Value.GitHub, () => settings.Value.ServiceCloud);
+        await CheckActualIdentityAsync(git, source);
+    }
 
-        // 未设置统一邮箱时，从真实 GitHub 登录账号取得关联的 noreply 邮箱。
-        var live = new GitManager.Services.GitRepositoryService(Runner);
-        string email = await live.ResolveCommitEmailAsync(clone);
-        Check(email.EndsWith("@users.noreply.github.com", StringComparison.Ordinal), "从 GitHub 账号取得关联邮箱");
-        Console.WriteLine("提交邮箱检查通过：" + email);
+    private static async Task RunCommitIdentityHostChecksAsync(string github, string cloud)
+    {
+        var settings = new SettingsStore();
+        var git = new GitRepositoryService(Runner, settings.Value.GitHub, () => settings.Value.ServiceCloud);
+        string global = (await Runner.RunAsync(null, ["config", "--global", "--get", "user.email"], true)).Output;
+        Check(await git.UsesGitHubCommitIdentityAsync(github), "真实 GitHub 推送地址使用 GitHub 身份");
+        Check(!await git.UsesGitHubCommitIdentityAsync(cloud), "真实服务云推送地址使用非 GitHub 身份");
+        var githubIdentity = await CheckActualIdentityAsync(git, github);
+        var cloudIdentity = await CheckActualIdentityAsync(git, cloud);
+        Check(githubIdentity.Email == settings.Value.GitHub.CommitEmail, "GitHub 提交邮箱保持原设置");
+        Check(!cloudIdentity.Email.EndsWith("@users.noreply.github.com", StringComparison.OrdinalIgnoreCase), "服务云不使用 GitHub 邮箱");
+        Check((await Runner.RunAsync(null, ["config", "--global", "--get", "user.email"], true)).Output == global, "全局 Git 邮箱保持一致");
+        Console.WriteLine("按远程服务选择提交身份的检查通过。");
+    }
+
+    private static async Task<RepositoryCommitIdentity> CheckActualIdentityAsync(GitRepositoryService git, string root)
+    {
+        string head = (await Runner.RunAsync(root, ["rev-parse", "HEAD"])).Output;
+        string localEmail = (await Runner.RunAsync(root, ["config", "--local", "--get", "user.email"], true)).Output;
+        var identity = await git.ResolveCommitIdentityAsync(root);
+        foreach (string variable in new[] { "GIT_AUTHOR_IDENT", "GIT_COMMITTER_IDENT" })
+        {
+            string effective = (await Runner.RunAsync(root, ["-c", "user.name=" + identity.Name, "-c", "user.email=" + identity.Email, "var", variable])).Output;
+            Check(effective.Contains("<" + identity.Email + ">", StringComparison.Ordinal), "Git 实际身份使用对应服务的邮箱");
+        }
+        Check((await Runner.RunAsync(root, ["rev-parse", "HEAD"])).Output == head, "真实仓库提交哈希保持一致");
+        Check((await Runner.RunAsync(root, ["config", "--local", "--get", "user.email"], true)).Output == localEmail, "原仓库 Git 邮箱配置保持一致");
+        Console.WriteLine("实际提交身份：" + identity.Name + " <" + identity.Email + ">");
+        return identity;
     }
 }

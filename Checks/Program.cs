@@ -49,6 +49,7 @@ internal static partial class Program
             if (args.Length == 1 && args[0] == "--qwen") { RunQwenSummaryChecks(); return 0; }
             if (args.Length > 2 && args[0] == "--qwen-live") { RunCommitSummaryChecks(args[1], args[2..], qwenLive: true); return 0; }
             if (args.Length == 2 && args[0] == "--identity") { RunCommitIdentityChecksAsync(args[1]).GetAwaiter().GetResult(); return 0; }
+            if (args is ["--identity-hosts", var githubIdentityRoot, var cloudIdentityRoot]) { RunCommitIdentityHostChecksAsync(githubIdentityRoot, cloudIdentityRoot).GetAwaiter().GetResult(); return 0; }
             if (args.Length is 3 or 4 && args[0] == "--servicecloud") { RunServiceCloudChecksAsync(args[1], args[2], args.Length == 4 ? args[3] : null).GetAwaiter().GetResult(); return 0; }
             if (args.Length == 3 && args[0] == "--servicecloud-ui") { RenderServiceCloud(args[1], args[2]); return 0; }
             if (args.Length > 2 && args[0] == "--summary") { RunCommitSummaryChecks(args[1], args[2..]); return 0; }

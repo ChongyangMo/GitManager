@@ -69,7 +69,10 @@ public sealed partial class MainViewModel
         await new GitManager.Services.GitRunner(() => gitPath).RunAsync(null, ["--version"]);
         Settings.Value.GitExecutablePath = gitPath;
         Settings.Value.Theme = theme;
-        Settings.Value.GitHub.CommitEmail = email;
+        bool github = !HasRepository || await Git.UsesGitHubCommitIdentityAsync(Root, _versions?.RemoteName);
+        if (!github && (email.EndsWith("@users.noreply.github.com", StringComparison.OrdinalIgnoreCase) || email.EndsWith("@github.com", StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException("请为非 GitHub 仓库填写公司或该服务账号的邮箱。");
+        if (github) Settings.Value.GitHub.CommitEmail = email;
         Settings.Save();
         UserEmail = email;
         GitManager.Services.ThemeService.Apply(theme);

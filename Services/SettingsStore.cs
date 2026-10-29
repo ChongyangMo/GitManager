@@ -71,6 +71,13 @@ public sealed class SettingsStore
             Save();
             AppLog.Write("已按磁盘实际目录名更新仓库路径记录");
         }
+        if (string.IsNullOrWhiteSpace(Value.ServiceCloud.GitBaseUrl))
+        {
+            string defaults = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+            var cloud = File.Exists(defaults) ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(defaults))?.ServiceCloud : null;
+            if (cloud is not null && string.Equals(Value.ServiceCloud.BaseUrl.TrimEnd('/'), cloud.BaseUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+                Value.ServiceCloud.GitBaseUrl = cloud.GitBaseUrl;
+        }
     }
 
     public void Save()

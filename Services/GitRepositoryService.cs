@@ -3,10 +3,11 @@ using GitManager.Models;
 
 namespace GitManager.Services;
 
-public sealed partial class GitRepositoryService(GitRunner runner, GitHub.GitHubOptions? gitHubOptions = null)
+public sealed partial class GitRepositoryService(GitRunner runner, GitHub.GitHubOptions? gitHubOptions = null, Func<ServiceCloud.ServiceCloudOptions>? serviceCloudOptions = null)
 {
     public GitRunner Runner { get; } = runner;
     private GitHub.GitHubOptions GitHubOptions { get; } = gitHubOptions ?? new();
+    private ServiceCloud.ServiceCloudOptions CloudOptions() => serviceCloudOptions?.Invoke() ?? new();
     private Task<GitResult> Run(string root, params string[] args) => Runner.RunAsync(root, args);
 
     public async Task<string> OpenAsync(string directory, CancellationToken cancellationToken = default)
@@ -53,9 +54,8 @@ public sealed partial class GitRepositoryService(GitRunner runner, GitHub.GitHub
         var branchesTask = Run(root, "for-each-ref", "--format=%(refname:short)", "refs/heads/");
         var changesTask = ReadChangesAsync(root);
         var remoteTask = ReadConfigAsync(root, "remote.origin.url");
-        var nameTask = ReadConfigAsync(root, "user.name");
-        var emailTask = ReadCommitEmailAsync(root);
-        await Task.WhenAll(branchTask, headTask, branchesTask, changesTask, remoteTask, nameTask, emailTask);
+        var identityTask = ReadCommitIdentityAsync(root);
+        await Task.WhenAll(branchTask, headTask, branchesTask, changesTask, remoteTask, identityTask);
         var branch = await branchTask;
         var head = await headTask;
         string current = branch.ExitCode == 0 ? branch.Output.Trim() : "分离 HEAD";
@@ -67,7 +67,8 @@ public sealed partial class GitRepositoryService(GitRunner runner, GitHub.GitHub
         {
             commits = await ReadCommitsAsync(root, head.Output.Trim());
         }
-        return new(current, branches, changes, commits, await remoteTask, await nameTask, await emailTask, head.ExitCode == 0);
+        var identity = await identityTask;
+        return new(current, branches, changes, commits, await remoteTask, identity.Name, identity.Email, head.ExitCode == 0);
     }
 
     public async Task<List<ChangedFile>> ReadChangesAsync(string root, CancellationToken cancellationToken = default)

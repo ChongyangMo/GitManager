@@ -55,7 +55,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public MainViewModel(SettingsStore settings)
     {
         Settings = settings;
-        Git = new(new GitRunner(() => Settings.Value.GitExecutablePath, _lifetimeCancellation.Token), Settings.Value.GitHub);
+        Git = new(new GitRunner(() => Settings.Value.GitExecutablePath, _lifetimeCancellation.Token), Settings.Value.GitHub, () => Settings.Value.ServiceCloud);
         Repositories.CollectionChanged += RepositoryBookmarksChanged;
         foreach (string path in settings.Value.Repositories.Distinct(StringComparer.OrdinalIgnoreCase)) Repositories.Add(new(path));
     }
@@ -117,16 +117,18 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    // 首次启动时从 GitHub 登录账号取得关联邮箱并保存，之后所有仓库提交统一使用。
+    // 只为当前仓库读取对应服务的提交身份。
     private async Task EnsureCommitEmailAsync()
     {
-        if (Settings.Value.GitHub.CommitEmail.Trim().Length > 0) return;
+        if (Repository is null) return;
+        string root = Root;
         try
         {
-            UserEmail = await Git.ResolveCommitEmailAsync(Repository?.Path, _lifetimeCancellation.Token);
+            var identity = await Git.ResolveCommitIdentityAsync(root, token: _lifetimeCancellation.Token);
+            if (!_disposed && IsCurrentRepository(root)) { UserName = identity.Name; UserEmail = identity.Email; }
             Settings.Save();
         }
-        catch (Exception ex) { if (!_disposed) AppLog.Write("从 GitHub 账号取得提交邮箱失败", ex); }
+        catch (Exception ex) { if (!_disposed) AppLog.Write("读取仓库提交身份失败", ex); }
     }
 
     private static void Replace<T>(ObservableCollection<T> destination, IEnumerable<T> source)

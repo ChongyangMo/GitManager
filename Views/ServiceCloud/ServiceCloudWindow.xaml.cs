@@ -60,7 +60,9 @@ public partial class ServiceCloudWindow : Window
             var repositories = await client.ListRepositoriesAsync(_lifetime.Token);
             string loginName = UsernameBox.Text.Trim();
             await _credentials.SaveAsync(client.BaseUri.AbsoluteUri, loginName, password);
-            _settings.Value.ServiceCloud = new() { BaseUrl = client.BaseUri.AbsoluteUri.TrimEnd('/'), Username = loginName, ProxyUrl = ProxyBox.Text.Trim() };
+            string gitBase = string.Equals(_settings.Value.ServiceCloud.BaseUrl.TrimEnd('/'), client.BaseUri.AbsoluteUri.TrimEnd('/'), StringComparison.OrdinalIgnoreCase)
+                ? _settings.Value.ServiceCloud.GitBaseUrl : "";
+            _settings.Value.ServiceCloud = new() { BaseUrl = client.BaseUri.AbsoluteUri.TrimEnd('/'), GitBaseUrl = gitBase, Username = loginName, ProxyUrl = ProxyBox.Text.Trim() };
             _settings.Save();
             _client = client;
             ServerBox.Text = _settings.Value.ServiceCloud.BaseUrl;
