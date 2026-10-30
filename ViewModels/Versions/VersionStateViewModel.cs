@@ -15,7 +15,7 @@ public sealed partial class MainViewModel
     private readonly Dictionary<string, string> _fetchErrors = [];
     public ObservableCollection<RemoteBranch> RemoteBranches { get; } = [];
     public ObservableCollection<CommitInfo> RemoteHistory { get; } = [];
-    public ObservableCollection<HistoryFile> RemoteFiles { get; } = [];
+    public ObservableCollection<HistoryFile> RemoteFiles { get; } = new BatchObservableCollection<HistoryFile>();
     public RemoteBranch? SelectedRemoteBranch { get => _selectedRemoteBranch; set => Set(ref _selectedRemoteBranch, value); }
     public CommitInfo? SelectedRemoteCommit { get => _selectedRemoteCommit; set => Set(ref _selectedRemoteCommit, value); }
     public HistoryFile? SelectedRemoteFile { get => _selectedRemoteFile; set => Set(ref _selectedRemoteFile, value); }

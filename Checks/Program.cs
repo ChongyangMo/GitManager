@@ -22,6 +22,7 @@ internal static partial class Program
     {
         try
         {
+            if (args is ["--large-repository-switch", var largeRoot, var smallRoot]) { RunLargeRepositorySwitchChecks(largeRoot, smallRoot); return 0; }
             if (args is ["--lfs-live", var lfsRoot]) { RunLfsLiveChecksAsync(lfsRoot).GetAwaiter().GetResult(); return 0; }
             if (args is ["--ensure-github-remote", var githubRoot, var githubRemote]) { RunGitHubRemoteChecksAsync(githubRoot, githubRemote).GetAwaiter().GetResult(); return 0; }
             if (args is ["--github-visibility", var visibilityRoot, var visibilityRemote]) { RunGitHubVisibilityChecksAsync(visibilityRoot, visibilityRemote).GetAwaiter().GetResult(); return 0; }

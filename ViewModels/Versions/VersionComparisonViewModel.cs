@@ -9,7 +9,7 @@ public sealed partial class MainViewModel
     private HistoryFile? _selectedVersionFile;
     private bool _followHeads = true;
     public ObservableCollection<VersionChoice> VersionChoices { get; } = [];
-    public ObservableCollection<HistoryFile> VersionFiles { get; } = [];
+    public ObservableCollection<HistoryFile> VersionFiles { get; } = new BatchObservableCollection<HistoryFile>();
     public VersionChoice? ComparisonBefore { get => _comparisonBefore; set => Set(ref _comparisonBefore, value); }
     public VersionChoice? ComparisonAfter { get => _comparisonAfter; set => Set(ref _comparisonAfter, value); }
     public HistoryFile? SelectedVersionFile { get => _selectedVersionFile; set => Set(ref _selectedVersionFile, value); }

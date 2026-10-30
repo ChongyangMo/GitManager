@@ -10,9 +10,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public SettingsStore Settings { get; }
     public GitRepositoryService Git { get; }
     public ObservableCollection<RepositoryBookmark> Repositories { get; } = [];
-    public ObservableCollection<ChangedFile> Changes { get; } = [];
+    public ObservableCollection<ChangedFile> Changes { get; } = new BatchObservableCollection<ChangedFile>();
     public ObservableCollection<CommitInfo> History { get; } = [];
-    public ObservableCollection<HistoryFile> HistoryFiles { get; } = [];
+    public ObservableCollection<HistoryFile> HistoryFiles { get; } = new BatchObservableCollection<HistoryFile>();
     public ObservableCollection<string> Branches { get; } = [];
     private bool _busy, _hasHead;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
@@ -134,6 +134,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private static void Replace<T>(ObservableCollection<T> destination, IEnumerable<T> source)
     {
         T[] items = source.ToArray();
+        if (Math.Max(destination.Count, items.Length) >= 256 && destination is BatchObservableCollection<T> batch)
+        {
+            batch.ReplaceAll(items);
+            return;
+        }
         for (int i = 0; i < items.Length; i++)
         {
             if (i < destination.Count && EqualityComparer<T>.Default.Equals(destination[i], items[i])) continue;
