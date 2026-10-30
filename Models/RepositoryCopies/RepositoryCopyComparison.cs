@@ -8,11 +8,16 @@ public sealed record RepositoryCopySnapshot(RepositoryBookmark Bookmark, int Num
     public bool CanDeleteLocal => Error.Length == 0;
 }
 
-// Hash 按原始字节计算；Content 把 CRLF 统一为 LF 后计算（二进制文件与 Hash 相同），用于区分“仅换行符不同”。
-public sealed record RepositoryFileFingerprint(string Hash, string Content, string LineEnding)
+// 共有文件才读取内容；单份存在的文件记录实际大小和修改时间，供分析结束后的变化检查使用。
+public sealed record RepositoryFileStamp(long Length, long LastWriteTimeUtcTicks);
+// Hash 按原始字节计算；Content 把 CRLF 统一为 LF 后计算（二进制文件与 Hash 相同）。
+public sealed record RepositoryFileFingerprint(string Hash, string Content, string LineEnding, RepositoryFileStamp? Stamp = null)
 {
     public const string Submodule = "子模块未比较";
+    public const string UniqueFile = "仅此副本存在，未比较内容";
     public static RepositoryFileFingerprint Special(string label) => new(label, label, "");
+    public static RepositoryFileFingerprint Unique(long length, long lastWriteTimeUtcTicks)
+        => new(UniqueFile, UniqueFile, "", new(length, lastWriteTimeUtcTicks));
 }
 
 public sealed record RepositoryCopyDifference(string Path, string Difference);

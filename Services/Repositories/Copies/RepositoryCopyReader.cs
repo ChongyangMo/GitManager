@@ -1,15 +1,33 @@
+using System.Diagnostics;
 using System.IO;
-using System.Security.Cryptography;
 using GitManager.Models;
 using GitManager.Models.RepositoryCopies;
 
 namespace GitManager.Services.Repositories.Copies;
 
+public sealed record RepositoryCopyReadProgress(int Number, string State, RepositoryCopySnapshot? Snapshot = null);
+
 public sealed class RepositoryCopyReader(GitRepositoryService git)
 {
-    public async Task<RepositoryCopyComparison> ReadAsync(IReadOnlyList<RepositoryBookmark> bookmarks, CancellationToken token = default)
+    private sealed record CopyFiles(RepositoryCopySnapshot Snapshot, string[] Paths);
+
+    public async Task<RepositoryCopyComparison> ReadAsync(IReadOnlyList<RepositoryBookmark> bookmarks, CancellationToken token = default,
+        IProgress<RepositoryCopyReadProgress>? progress = null)
     {
-        var copies = await Task.WhenAll(bookmarks.Select((bookmark, index) => ReadCopyAsync(bookmark, index + 1, token)));
+        var watch = Stopwatch.StartNew();
+        var entries = await Task.WhenAll(bookmarks.Select((bookmark, index) => ReadCopyAsync(bookmark, index + 1, token, progress))).ConfigureAwait(false);
+        // 先合并路径清单。只有至少两份副本都存在的路径才需要读取内容，单份文件可直接判断为缺失差异。
+        var shared = entries.SelectMany(entry => entry.Paths).GroupBy(path => path, StringComparer.Ordinal)
+            .Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet(StringComparer.Ordinal);
+        var copies = await Task.WhenAll(entries.Select(entry => Task.Run(() =>
+        {
+            if (entry.Snapshot.Error.Length > 0) return entry.Snapshot;
+            try
+            {
+                return entry.Snapshot with { Files = ReadFiles(entry, shared, token, progress) };
+            }
+            catch (Exception ex) when (IsReadError(ex)) { return Failed(entry.Snapshot.Bookmark, entry.Snapshot.Number, ex); }
+        }, token))).ConfigureAwait(false);
         List<RepositoryCopyDifference> differences = [], lineEndings = [];
         if (copies.All(copy => copy.Error.Length == 0))
         {
@@ -18,7 +36,6 @@ public sealed class RepositoryCopyReader(GitRepositoryService git)
                 token.ThrowIfCancellationRequested();
                 var values = copies.Select(copy => copy.Files.GetValueOrDefault(path)).ToArray();
                 if (values.Select(value => value?.Hash).Distinct(StringComparer.Ordinal).Count() == 1) continue;
-                // 同一提交在不同 core.autocrlf 下检出会得到 CRLF/LF 两种文件，内容一致，单独列出不计入差异。
                 if (values.All(value => value is not null) && values.Select(value => value!.Content).Distinct(StringComparer.Ordinal).Count() == 1)
                 {
                     lineEndings.Add(new(path, string.Join("；", values.Select((value, index) => $"{index + 1}：{value!.LineEnding}"))));
@@ -29,90 +46,87 @@ public sealed class RepositoryCopyReader(GitRepositoryService git)
                     $"{index + 1}：" + (value is null ? "缺失" : versions.Count == 1 ? "存在" : $"内容 {versions.IndexOf(value.Content) + 1}")))));
             }
         }
+        AppLog.Write($"同名仓库比较完成，共 {copies.Length} 份，{shared.Count} 个共有路径，耗时 {watch.ElapsedMilliseconds} 毫秒");
         return new(copies, differences, lineEndings);
     }
 
-    private async Task<RepositoryCopySnapshot> ReadCopyAsync(RepositoryBookmark bookmark, int number, CancellationToken token)
+    private async Task<CopyFiles> ReadCopyAsync(RepositoryBookmark bookmark, int number, CancellationToken token,
+        IProgress<RepositoryCopyReadProgress>? progress)
     {
+        progress?.Report(new(number, "正在读取仓库信息"));
         try
         {
-            string root = await git.OpenAsync(bookmark.Path, token);
-            string remote = await git.ReadConfigAsync(root, "remote.origin.url");
-            if (remote.Length == 0) remote = await git.ReadConfigAsync(root, "gitmanager.serviceCloudUrl");
-            var branch = await git.Runner.RunAsync(root, ["symbolic-ref", "--quiet", "--short", "HEAD"], true, token);
-            var commit = await git.Runner.RunAsync(root, ["log", "-1", "--format=%H%n%s"], true, token);
-            var head = await git.Runner.RunAsync(root, ["rev-parse", "--verify", "HEAD"], true, token);
+            string root = await git.OpenAsync(bookmark.Path, token).ConfigureAwait(false);
+            string remote = await ReadConfigAsync(root, "remote.origin.url", token).ConfigureAwait(false);
+            if (remote.Length == 0) remote = await ReadConfigAsync(root, "gitmanager.serviceCloudUrl", token).ConfigureAwait(false);
+            var branch = await git.Runner.RunAsync(root, ["symbolic-ref", "--quiet", "--short", "HEAD"], true, token).ConfigureAwait(false);
+            var commit = await git.Runner.RunAsync(root, ["log", "-1", "--format=%H%n%s"], true, token).ConfigureAwait(false);
+            var head = await git.Runner.RunAsync(root, ["rev-parse", "--verify", "HEAD"], true, token).ConfigureAwait(false);
             if (commit.ExitCode != 0 && head.ExitCode == 0) throw new IOException("读取最近提交失败。" + commit.Error);
-            var changes = await git.ReadChangesAsync(root, token);
-            string files = (await git.Runner.RunAsync(root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], cancellationToken: token)).Output;
-            var fingerprints = await Task.Run(() => ReadFiles(root, files, token), token);
-            return new(bookmark, number, remote.Length == 0 ? "未配置" : AppLog.Clean(remote),
+            var changes = await git.ReadChangesAsync(root, token).ConfigureAwait(false);
+            progress?.Report(new(number, "正在读取文件清单"));
+            string files = (await git.Runner.RunAsync(root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], cancellationToken: token).ConfigureAwait(false)).Output;
+            var snapshot = new RepositoryCopySnapshot(bookmark, number, remote.Length == 0 ? "未配置" : AppLog.Clean(remote),
                 branch.ExitCode == 0 ? branch.Output.Trim() : "分离 HEAD",
                 commit.ExitCode == 0 ? commit.Output.Trim() : "暂无提交",
                 changes.Count == 0 ? "无未提交改动" : string.Join("\n", changes.Select(file => $"{file.State} · {file.Path}")),
-                fingerprints, "");
+                new Dictionary<string, RepositoryFileFingerprint>(), "");
+            progress?.Report(new(number, "仓库信息已读取", snapshot));
+            return new(snapshot, files.Split('\0', StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.Ordinal).ToArray());
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception or TimeoutException)
-        {
-            AppLog.Write("读取同名仓库差异失败：" + bookmark.Path, ex);
-            return new(bookmark, number, "未读取", "未读取", "未读取", "未读取", new Dictionary<string, RepositoryFileFingerprint>(), AppLog.Clean(ex.Message));
-        }
+        catch (Exception ex) when (IsReadError(ex)) { return new(Failed(bookmark, number, ex), []); }
     }
 
-    private static Dictionary<string, RepositoryFileFingerprint> ReadFiles(string root, string output, CancellationToken token)
+    private async Task<string> ReadConfigAsync(string root, string name, CancellationToken token)
     {
+        var result = await git.Runner.RunAsync(root, ["config", "--get", name], true, token).ConfigureAwait(false);
+        if (result.ExitCode is not (0 or 1)) throw new IOException("读取 Git 配置失败：" + result.Error);
+        return result.Output.Trim();
+    }
+
+    private static Dictionary<string, RepositoryFileFingerprint> ReadFiles(CopyFiles entry, HashSet<string> shared, CancellationToken token,
+        IProgress<RepositoryCopyReadProgress>? progress)
+    {
+        string root = entry.Snapshot.Path;
         var files = new Dictionary<string, RepositoryFileFingerprint>(StringComparer.Ordinal);
-        foreach (string path in output.Split('\0', StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.Ordinal))
+        var watch = Stopwatch.StartNew();
+        foreach (string path in entry.Paths)
         {
             token.ThrowIfCancellationRequested();
-            string fullPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(root, path));
-            if (!fullPath.StartsWith(root.TrimEnd('\\', '/') + System.IO.Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            if (files.Count == 0 || watch.ElapsedMilliseconds >= 200)
+            {
+                progress?.Report(new(entry.Snapshot.Number, $"正在比较文件 {files.Count}/{entry.Paths.Length}"));
+                watch.Restart();
+            }
+            string fullPath = Path.GetFullPath(Path.Combine(root, path));
+            if (!fullPath.StartsWith(root.TrimEnd('\\', '/') + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                 throw new IOException("仓库文件路径超出根目录。");
-            // 子模块是独立仓库，不把目录当作普通文件读取。
-            if (Directory.Exists(fullPath)) { files[path] = RepositoryFileFingerprint.Special(RepositoryFileFingerprint.Submodule); continue; }
-            if (!File.Exists(fullPath)) { files[path] = RepositoryFileFingerprint.Special("工作区已删除"); continue; }
-            using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            files[path] = Fingerprint(stream);
+            var info = new FileInfo(fullPath);
+            // 属性、大小和修改时间复用同一次文件信息查询，避免给数万个文件重复查询磁盘。
+            FileAttributes attributes = info.Attributes;
+            if (attributes == (FileAttributes)(-1)) { files[path] = RepositoryFileFingerprint.Special("工作区已删除"); continue; }
+            if ((attributes & FileAttributes.Directory) != 0) { files[path] = RepositoryFileFingerprint.Special(RepositoryFileFingerprint.Submodule); continue; }
+            if (!shared.Contains(path))
+            {
+                files[path] = RepositoryFileFingerprint.Unique(info.Length, info.LastWriteTimeUtc.Ticks);
+                continue;
+            }
+            using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, FileOptions.SequentialScan);
+            files[path] = Fingerprint(stream, token);
         }
+        progress?.Report(new(entry.Snapshot.Number, $"文件比较完成 {files.Count}/{entry.Paths.Length}"));
         return files;
     }
 
-    // 一次读取同时计算原始哈希和 CRLF→LF 后的内容哈希；与 Git 一致，前 8000 字节含 NUL 视为二进制，不做换行处理。
-    public static RepositoryFileFingerprint Fingerprint(Stream stream)
+    private static bool IsReadError(Exception ex)
+        => ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception or TimeoutException;
+
+    private static RepositoryCopySnapshot Failed(RepositoryBookmark bookmark, int number, Exception ex)
     {
-        const byte CarriageReturn = 13, LineFeed = 10;
-        using var raw = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        using var content = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        byte[] buffer = new byte[81920], normalized = new byte[buffer.Length + 1];
-        bool? binary = null;
-        bool pendingCr = false;
-        long crlf = 0, lf = 0;
-        int read;
-        while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-        {
-            raw.AppendData(buffer, 0, read);
-            binary ??= buffer.AsSpan(0, Math.Min(read, 8000)).Contains((byte)0);
-            if (binary.Value) continue;
-            int length = 0;
-            for (int i = 0; i < read; i++)
-            {
-                byte value = buffer[i];
-                if (pendingCr)
-                {
-                    pendingCr = false;
-                    if (value == LineFeed) { crlf++; normalized[length++] = value; continue; }
-                    normalized[length++] = CarriageReturn;
-                }
-                if (value == CarriageReturn) { pendingCr = true; continue; }
-                if (value == LineFeed) lf++;
-                normalized[length++] = value;
-            }
-            content.AppendData(normalized, 0, length);
-        }
-        if (pendingCr) content.AppendData([CarriageReturn]);
-        string hash = Convert.ToHexString(raw.GetHashAndReset());
-        if (binary == true) return new(hash, hash, "");
-        string lineEnding = (crlf, lf) switch { (0, 0) => "无换行", (_, 0) => "CRLF", (0, _) => "LF", _ => "CRLF/LF 混合" };
-        return new(hash, Convert.ToHexString(content.GetHashAndReset()), lineEnding);
+        AppLog.Write("读取同名仓库差异失败：" + bookmark.Path, ex);
+        return new(bookmark, number, "未读取", "未读取", "未读取", "未读取", new Dictionary<string, RepositoryFileFingerprint>(), AppLog.Clean(ex.Message));
     }
+
+    public static RepositoryFileFingerprint Fingerprint(Stream stream, CancellationToken token = default)
+        => RepositoryFileFingerprintReader.Read(stream, token);
 }

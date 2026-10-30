@@ -13,6 +13,7 @@ public partial class RepositoryCopiesWindow : Window
 {
     private readonly MainViewModel _owner;
     private readonly List<RepositoryBookmark> _bookmarks;
+    private CancellationTokenSource? _readCancellation;
     private bool _loading;
     public RepositoryCopyComparison? Comparison { get; private set; }
 
@@ -34,14 +35,33 @@ public partial class RepositoryCopiesWindow : Window
 
     private async Task ReloadAsync()
     {
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_windowCancellation.Token);
+        _readCancellation = cancellation;
         _loading = true;
+        Comparison = null;
         ClearAnalysis();
-        AnalyzeButton.IsEnabled = false;
+        CopiesList.ItemsSource = null;
+        DifferencesList.ItemsSource = null;
+        LineEndingList.ItemsSource = null;
+        LineEndingList.Visibility = Visibility.Collapsed;
+        LineEndingToggle.Visibility = Visibility.Collapsed;
+        FileState.Text = "";
+        AnalyzeButton.Content = "取消比较";
+        AnalyzeButton.IsEnabled = true;
         CopiesList.IsEnabled = false;
         StateText.Text = "正在比较仓库";
+        var previews = new RepositoryCopySnapshot?[_bookmarks.Count];
+        var progress = new Progress<RepositoryCopyReadProgress>(update =>
+        {
+            if (_closed || cancellation.IsCancellationRequested || !ReferenceEquals(_readCancellation, cancellation)) return;
+            StateText.Text = $"第 {update.Number} 份：{update.State}";
+            if (update.Snapshot is not { } snapshot) return;
+            previews[update.Number - 1] = snapshot;
+            CopiesList.ItemsSource = previews.OfType<RepositoryCopySnapshot>().ToArray();
+        });
         try
         {
-            Comparison = await new RepositoryCopyReader(_owner.Git).ReadAsync(_bookmarks, _windowCancellation.Token);
+            Comparison = await new RepositoryCopyReader(_owner.Git).ReadAsync(_bookmarks, cancellation.Token, progress);
             if (_closed) return;
             CopiesList.ItemsSource = Comparison.Copies;
             DifferencesList.ItemsSource = Comparison.Differences;
@@ -52,14 +72,32 @@ public partial class RepositoryCopiesWindow : Window
             FileState.Text = Comparison.FileStatus;
             StateText.Text = "";
         }
-        catch (OperationCanceledException) when (_closed) { return; }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            if (!_closed)
+            {
+                CopiesList.ItemsSource = null;
+                StateText.Text = "已取消比较";
+                AnalysisState.Text = "已取消";
+            }
+            return;
+        }
         catch (Exception ex)
         {
             Comparison = null;
+            CopiesList.ItemsSource = null;
             StateText.Text = "比较失败：" + AppLog.Clean(ex.Message);
+            AnalysisState.Text = "比较未完成";
             AppLog.Write("比较同名仓库失败", ex);
         }
-        finally { _loading = false; CopiesList.IsEnabled = true; AnalyzeButton.IsEnabled = true; }
+        finally
+        {
+            _readCancellation = null;
+            _loading = false;
+            CopiesList.IsEnabled = true;
+            AnalyzeButton.Content = "重新分析";
+            AnalyzeButton.IsEnabled = true;
+        }
         if (!_closed && Comparison is not null) await AnalyzeAsync();
     }
 

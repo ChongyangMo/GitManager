@@ -13,7 +13,7 @@
                         <DockPanel LastChildFill="True">
                             <Button x:Name="AnalyzeButton" Content="重新分析" DockPanel.Dock="Right" Click="AnalyzeClicked"
                                     Style="{StaticResource WorkspaceButton}" Margin="12,0,0,0"/>
-                            <TextBlock x:Name="AnalysisState" Text="准备分析" Foreground="{DynamicResource MutedBrush}"
+                            <TextBlock x:Name="AnalysisState" Text="正在读取仓库" Foreground="{DynamicResource MutedBrush}"
                                        VerticalAlignment="Center" TextWrapping="Wrap"/>
                         </DockPanel>
                         <FlowDocumentScrollViewer x:Name="AnalysisDocument" Visibility="Collapsed" Margin="0,12,0,0"

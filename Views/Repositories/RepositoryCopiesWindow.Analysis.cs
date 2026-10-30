@@ -15,11 +15,12 @@ public partial class RepositoryCopiesWindow
 
     private async void AnalyzeClicked(object sender, RoutedEventArgs e)
     {
-        if (_analysisCancellation is { } pending)
+        if ((_analysisCancellation ?? _readCancellation) is { } pending)
         {
             pending.Cancel();
             AnalyzeButton.IsEnabled = false;
-            AnalysisState.Text = "正在取消分析";
+            if (_readCancellation is not null) StateText.Text = "正在取消比较";
+            else AnalysisState.Text = "正在取消分析";
             return;
         }
         if (!_loading && !_owner.IsBusy) await ReloadAsync();
@@ -30,7 +31,7 @@ public partial class RepositoryCopiesWindow
         AnalysisText = null;
         AnalysisDocument.Document = null;
         AnalysisDocument.Visibility = Visibility.Collapsed;
-        AnalysisState.Text = "准备分析";
+        AnalysisState.Text = "正在读取仓库";
     }
 
     private async Task AnalyzeAsync()

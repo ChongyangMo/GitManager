@@ -50,6 +50,24 @@ internal static partial class Program
         Check(changed.Differences.Any(item => item.Path == "说明.md" && item.Difference == "1：内容 1；2：内容 2")
             && changed.Differences.Any(item => item.Path == "新增.txt" && item.Difference == "1：缺失；2：存在")
             && changed.LineEndingDifferences.Select(item => item.Path).SequenceEqual(["代码.cs"]), "真实内容改动和缺失文件仍计入差异");
+        var unique = changed.Copies[1].Files["新增.txt"];
+        Check(unique.Hash == RepositoryFileFingerprint.UniqueFile && unique.Stamp?.Length == new FileInfo(Path.Combine(unix, "新增.txt")).Length,
+            "单份存在的文件记录实际文件状态，仍显示为缺失差异");
+        await File.AppendAllTextAsync(Path.Combine(unix, "新增.txt"), "后续改动\n");
+        var edited = await reader.ReadAsync([new RepositoryBookmark(windows), new RepositoryBookmark(unix)]);
+        Check(edited.Copies[1].Files["新增.txt"] != unique, "单份文件修改后，分析复查仍能发现变化");
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        bool stopped = false;
+        try { RepositoryCopyReader.Fingerprint(new MemoryStream(Text("实际内容\n")), cancelled.Token); }
+        catch (OperationCanceledException) { stopped = true; }
+        Check(stopped, "文件内容读取响应取消");
+        File.Delete(Path.Combine(unix, "代码.cs"));
+        var deleted = await reader.ReadAsync([new RepositoryBookmark(windows), new RepositoryBookmark(unix)]);
+        Check(deleted.Copies.All(copy => copy.Error.Length == 0) && deleted.Copies[1].Files["代码.cs"].Hash == "工作区已删除",
+            "已删除的跟踪文件仍明确标记，不误认成子模块");
+        var missing = await reader.ReadAsync([new RepositoryBookmark(windows), new RepositoryBookmark(Path.Combine(root, "missing"))]);
+        Check(missing.Copies[1].Error.Length > 0 && missing.FileStatus == "文件比较未完成", "目录读取失败不误报为内容相同");
         Console.WriteLine($"换行符比较检查通过，共 {_count} 项。临时仓库：{root}");
     }
 }
