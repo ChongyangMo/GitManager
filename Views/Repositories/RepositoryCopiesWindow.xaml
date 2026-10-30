@@ -72,6 +72,10 @@
                 </ListBox>
             </StackPanel>
         </ScrollViewer>
-        <Button Grid.Row="2" Content="关闭" IsCancel="True" HorizontalAlignment="Right" Style="{StaticResource WorkspaceButton}" Margin="0,16,0,0"/>
+        <DockPanel Grid.Row="2" Margin="0,16,0,0" LastChildFill="False">
+            <Button Content="关闭" IsCancel="True" DockPanel.Dock="Right" Style="{StaticResource WorkspaceButton}"/>
+            <Button x:Name="RetainCopiesButton" Content="保留两份，不再提醒" Click="RetainCopiesClicked"
+                    Style="{StaticResource WorkspaceButton}"/>
+        </DockPanel>
     </Grid>
 </Window>

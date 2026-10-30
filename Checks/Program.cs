@@ -39,6 +39,7 @@ internal static partial class Program
             if (args.Length >= 3 && args[0] == "--luxai-live") { RunLuxAiLiveAsync(args[1], args[2..]).GetAwaiter().GetResult(); return 0; }
             if (args.Length == 1 && args[0] == "--repository-paths") { RunRepositoryPathChecksAsync().GetAwaiter().GetResult(); return 0; }
             if (args.Length == 1 && args[0] == "--repository-copies") { RunRepositoryCopiesChecks(); return 0; }
+            if (args.Length == 3 && args[0] == "--copy-retention") { RunCopyRetentionChecks(args[1..]); return 0; }
             if (args.Length >= 3 && args[0] == "--copy-read") { RunCopyReadChecksAsync(args[1..]).GetAwaiter().GetResult(); return 0; }
             if (args.Length >= 3 && args[0] == "--copy-read-ui") { RunCopyReadWindowChecks(args[1..]); return 0; }
             if (args.Length >= 3 && args[0] == "--copy-analysis-live") { RunCopyAnalysisLive(args[1..]); return 0; }

@@ -13,6 +13,7 @@ public sealed class AppSettings
     public GitHub.GitHubOptions GitHub { get; set; } = new();
     public Dictionary<string, Layout.PaneLayoutState> WorkspaceLayout { get; set; } = new();
     public List<string> IgnoredRepositories { get; set; } = [];
+    public List<Repositories.Copies.RetainedRepositoryPair> RetainedRepositoryPairs { get; set; } = [];
     public Repositories.RepositoryDiscoveryOptions RepositoryDiscovery { get; set; } = new();
     public Repositories.AutoUploadOptions AutoUpload { get; set; } = new();
     public ServiceCloud.ServiceCloudOptions ServiceCloud { get; set; } = null!;
@@ -51,6 +52,7 @@ public sealed class SettingsStore
         Value.GitHub ??= new();
         Value.WorkspaceLayout ??= new();
         Value.IgnoredRepositories ??= [];
+        Value.RetainedRepositoryPairs ??= [];
         Value.RepositoryDiscovery ??= new();
         Value.RepositoryDiscovery.Roots ??= [];
         Value.AutoUpload ??= new();

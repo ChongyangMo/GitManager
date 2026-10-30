@@ -22,6 +22,8 @@ public partial class RepositoryCopiesWindow : Window
         _owner = owner;
         _bookmarks = bookmarks.ToList();
         InitializeComponent();
+        RetainCopiesButton.Visibility = bookmarks.Count >= 2 ? Visibility.Visible : Visibility.Collapsed;
+        RetainCopiesButton.Content = bookmarks.Count == 2 ? "保留两份，不再提醒" : "保留全部，不再提醒";
         ThemeService.Attach(this);
         Title = bookmarks.FirstOrDefault()?.Name + " · 同名仓库";
         Loaded += async (_, _) => await ReloadAsync();
@@ -120,6 +122,20 @@ public partial class RepositoryCopiesWindow : Window
     private async void RemoveClicked(object sender, RoutedEventArgs e) => await RemoveAsync(sender, false);
     private async void DeleteClicked(object sender, RoutedEventArgs e) => await RemoveAsync(sender, true);
 
+    private void RetainCopiesClicked(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _owner.RetainRepositoryCopies(_bookmarks);
+            Close();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("保存同名仓库保留选择失败", ex);
+            MessageBox.Show(this, AppLog.Clean(ex.Message), "保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private async Task RemoveAsync(object sender, bool deleteLocal)
     {
         if (_loading || _owner.IsBusy || sender is not FrameworkElement { DataContext: RepositoryCopySnapshot copy }) return;
@@ -130,6 +146,7 @@ public partial class RepositoryCopiesWindow : Window
                 MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
         ClearAnalysis();
         AnalyzeButton.IsEnabled = false;
+        RetainCopiesButton.IsEnabled = false;
         _loading = true;
         CopiesList.IsEnabled = false;
         try
@@ -137,7 +154,15 @@ public partial class RepositoryCopiesWindow : Window
             if (await _owner.RemoveRepositoryCopyAsync(copy.Bookmark, deleteLocal, ConfirmRelease)) _bookmarks.Remove(copy.Bookmark);
             if (_bookmarks.Count == 0) { Close(); return; }
         }
-        finally { _loading = false; CopiesList.IsEnabled = true; AnalyzeButton.IsEnabled = true; }
+        finally
+        {
+            _loading = false;
+            CopiesList.IsEnabled = true;
+            AnalyzeButton.IsEnabled = true;
+            RetainCopiesButton.IsEnabled = true;
+            RetainCopiesButton.Visibility = _bookmarks.Count >= 2 ? Visibility.Visible : Visibility.Collapsed;
+            RetainCopiesButton.Content = _bookmarks.Count == 2 ? "保留两份，不再提醒" : "保留全部，不再提醒";
+        }
         await ReloadAsync();
     }
 

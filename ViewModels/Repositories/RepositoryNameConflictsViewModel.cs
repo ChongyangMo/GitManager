@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using GitManager.Models;
 using GitManager.Services;
+using GitManager.Services.Repositories.Copies;
 
 namespace GitManager.ViewModels;
 
@@ -26,9 +27,11 @@ public sealed partial class MainViewModel
         foreach (var group in Repositories.GroupBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
         {
             var copies = group.ToArray();
-            if (copies.Length > 1 && copies.Any(item => !item.HasNameConflict))
+            var unresolved = copies.ToDictionary(bookmark => bookmark, bookmark => copies.Where(other => other == bookmark
+                || !RepositoryCopyRetention.Contains(Settings.Value.RetainedRepositoryPairs, bookmark.Path, other.Path)).ToArray());
+            if (copies.Any(item => unresolved[item].Length > 1 && !item.HasNameConflict))
                 AppLog.Write($"检测到同名仓库：{group.Key}，共 {copies.Length} 个独立目录");
-            foreach (var bookmark in copies) bookmark.UpdateNameConflict(copies);
+            foreach (var bookmark in copies) bookmark.UpdateNameConflict(unresolved[bookmark]);
         }
     }
 
