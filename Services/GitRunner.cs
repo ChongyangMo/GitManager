@@ -6,7 +6,7 @@ using GitManager.Models;
 
 namespace GitManager.Services;
 
-public sealed class GitRunner(Func<string> executable, CancellationToken lifetime = default)
+public sealed class GitRunner(Func<string> executable, CancellationToken lifetime = default, Func<GitExecutionOptions>? executionOptions = null)
 {
     // 进程初始化失败（STATUS_DLL_INIT_FAILED），常见于同时启动过多进程，此时 Git 尚未执行任何操作。
     private const int DllInitFailed = unchecked((int)0xC0000142);
@@ -63,7 +63,7 @@ public sealed class GitRunner(Func<string> executable, CancellationToken lifetim
         foreach (string argument in arguments) start.ArgumentList.Add(argument);
         using var process = new Process { StartInfo = start };
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lifetime);
-        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        timeout.CancelAfter((executionOptions?.Invoke() ?? new()).TimeoutFor(arguments));
         process.Start();
         // 退出界面时也立即结束后台进程，不依赖界面线程继续处理异步回调。
         using var cancellation = timeout.Token.Register(() =>

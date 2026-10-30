@@ -55,7 +55,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public MainViewModel(SettingsStore settings)
     {
         Settings = settings;
-        Git = new(new GitRunner(() => Settings.Value.GitExecutablePath, _lifetimeCancellation.Token), Settings.Value.GitHub, () => Settings.Value.ServiceCloud);
+        Git = new(new GitRunner(() => Settings.Value.GitExecutablePath, _lifetimeCancellation.Token, () => Settings.Value.GitExecution), Settings.Value.GitHub, () => Settings.Value.ServiceCloud);
         Repositories.CollectionChanged += RepositoryBookmarksChanged;
         foreach (string path in settings.Value.Repositories.Distinct(StringComparer.OrdinalIgnoreCase)) Repositories.Add(new(path));
     }

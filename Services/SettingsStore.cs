@@ -6,6 +6,7 @@ namespace GitManager.Services;
 public sealed class AppSettings
 {
     public string GitExecutablePath { get; set; } = @"C:\Program Files\Git\cmd\git.exe";
+    public GitExecutionOptions GitExecution { get; set; } = new();
     public List<string> Repositories { get; set; } = [];
     public string? LastRepository { get; set; }
     public string Theme { get; set; } = "System";
@@ -46,6 +47,7 @@ public sealed class SettingsStore
         string source = File.Exists(FilePath) ? FilePath : Path.Combine(AppContext.BaseDirectory, "appsettings.json");
         Value = File.Exists(source) ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(source)) ?? throw new InvalidDataException("配置文件内容为空。") : new();
         Value.Repositories ??= [];
+        Value.GitExecution ??= new();
         Value.GitHub ??= new();
         Value.WorkspaceLayout ??= new();
         Value.IgnoredRepositories ??= [];

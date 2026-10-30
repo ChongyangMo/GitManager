@@ -82,8 +82,7 @@ public sealed class ServiceCloudClient : IDisposable
         return NormalizeRepositoryName(body.RootElement.GetProperty("name").GetString()!);
     }
 
-    public string RepositoryUrl(string name) => new Uri(BaseUri, "git/" + string.Join('/',
-        NormalizeRepositoryName(name).Split('/').Select(Uri.EscapeDataString)) + ".git").AbsoluteUri;
+    public string RepositoryUrl(string name, string gitBaseUrl = "") => ServiceCloudGitAddress.RepositoryUrl(BaseUri, name, gitBaseUrl);
 
     public static string NormalizeRepositoryName(string name)
     {

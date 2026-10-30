@@ -23,7 +23,7 @@ public partial class ServiceCloudWindow : Window
         ThemeService.Attach(this);
         _settings = settings;
         _root = root;
-        _credentials = new(new GitRunner(() => settings.Value.GitExecutablePath, _lifetime.Token));
+        _credentials = new(new GitRunner(() => settings.Value.GitExecutablePath, _lifetime.Token, () => settings.Value.GitExecution));
         ServerBox.Text = settings.Value.ServiceCloud.BaseUrl;
         UsernameBox.Text = settings.Value.ServiceCloud.Username;
         ProxyBox.Text = settings.Value.ServiceCloud.ProxyUrl;
@@ -62,6 +62,7 @@ public partial class ServiceCloudWindow : Window
             await _credentials.SaveAsync(client.BaseUri.AbsoluteUri, loginName, password);
             string gitBase = string.Equals(_settings.Value.ServiceCloud.BaseUrl.TrimEnd('/'), client.BaseUri.AbsoluteUri.TrimEnd('/'), StringComparison.OrdinalIgnoreCase)
                 ? _settings.Value.ServiceCloud.GitBaseUrl : "";
+            if (!string.IsNullOrWhiteSpace(gitBase)) await _credentials.SaveAsync(gitBase, loginName, password);
             _settings.Value.ServiceCloud = new() { BaseUrl = client.BaseUri.AbsoluteUri.TrimEnd('/'), GitBaseUrl = gitBase, Username = loginName, ProxyUrl = ProxyBox.Text.Trim() };
             _settings.Save();
             _client = client;
@@ -105,7 +106,7 @@ public partial class ServiceCloudWindow : Window
     private void Complete(string name, string? cloneDirectory)
     {
         if (_client is null) return;
-        Connection = new(_client.BaseUri.AbsoluteUri, _settings.Value.ServiceCloud.Username, _client.RepositoryUrl(name), cloneDirectory, _settings.Value.ServiceCloud.ProxyUrl);
+        Connection = new(_client.BaseUri.AbsoluteUri, _settings.Value.ServiceCloud.Username, _client.RepositoryUrl(name, _settings.Value.ServiceCloud.GitBaseUrl), cloneDirectory, _settings.Value.ServiceCloud.ProxyUrl);
         DialogResult = true;
     }
 
