@@ -10,7 +10,8 @@ public sealed partial class MainViewModel
     {
         try
         {
-            var (address, group) = await RepositoryRemoteGroup.ReadAsync(Git, bookmark.Path, Settings.Value.ServiceCloud.BaseUrl);
+            var cloud = Settings.Value.ServiceCloud;
+            var (address, group) = await RepositoryRemoteGroup.ReadAsync(Git, bookmark.Path, cloud.BaseUrl, cloud.GitBaseUrl);
             bookmark.UpdateDisplayName(RepositoryDisplayName.FromRemote(address));
             bookmark.UpdateRemoteGroup(group);
         }

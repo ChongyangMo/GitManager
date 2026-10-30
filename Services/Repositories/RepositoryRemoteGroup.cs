@@ -9,13 +9,14 @@ public static class RepositoryRemoteGroup
 
     public static int Order(string group) => group switch { ServiceCloud => 0, GitHub => 1, LocalOnly => 4, "" => 5, LocalPath => 3, _ => 2 };
 
-    public static string FromRemote(string remote, string serviceCloudUrl, string serviceCloudBaseUrl)
+    public static string FromRemote(string remote, string serviceCloudUrl, string serviceCloudBaseUrl, string serviceCloudGitBaseUrl = "")
     {
         if (string.IsNullOrWhiteSpace(remote)) return LocalOnly;
         string? host = Host(remote);
         if (host is null) return LocalPath;
         if (remote.Trim() == serviceCloudUrl.Trim() || host.Equals(Host(serviceCloudUrl), StringComparison.OrdinalIgnoreCase)
-            || host.Equals(Host(serviceCloudBaseUrl), StringComparison.OrdinalIgnoreCase)) return ServiceCloud;
+            || host.Equals(Host(serviceCloudBaseUrl), StringComparison.OrdinalIgnoreCase)
+            || host.Equals(Host(serviceCloudGitBaseUrl), StringComparison.OrdinalIgnoreCase)) return ServiceCloud;
         return host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ? GitHub : host.ToLowerInvariant();
     }
 
@@ -29,7 +30,7 @@ public static class RepositoryRemoteGroup
     }
 
     // 返回用于显示名称的地址（origin，缺省时为服务云地址）及所属分组；没有 origin 时按第一个远程分组。
-    public static async Task<(string Address, string Group)> ReadAsync(GitRepositoryService git, string root, string serviceCloudBaseUrl)
+    public static async Task<(string Address, string Group)> ReadAsync(GitRepositoryService git, string root, string serviceCloudBaseUrl, string serviceCloudGitBaseUrl = "")
     {
         string origin = await git.ReadConfigAsync(root, "remote.origin.url");
         string cloud = await git.ReadConfigAsync(root, "gitmanager.serviceCloudUrl");
@@ -42,6 +43,6 @@ public static class RepositoryRemoteGroup
             string first = urls.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault() ?? "";
             grouped = first.IndexOf(' ') is int space and > 0 ? first[(space + 1)..].Trim() : "";
         }
-        return (address, FromRemote(grouped, cloud, serviceCloudBaseUrl));
+        return (address, FromRemote(grouped, cloud, serviceCloudBaseUrl, serviceCloudGitBaseUrl));
     }
 }
