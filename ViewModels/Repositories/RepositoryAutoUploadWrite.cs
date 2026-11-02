@@ -21,16 +21,17 @@ public sealed partial class MainViewModel
 
     private async Task WriteAutoUploadAsync(string root, IReadOnlyList<ChangedFile> files, GeneratedCommitMessage? summary, bool hasRemote, CancellationToken token)
     {
-        // 只保护正在上传的仓库，不占用前台导航和其他仓库的操作。
+        // 自动上传和合并共用写保护，不占用前台导航和其他仓库的操作。
         _autoUploadWriteRoot = root;
         NotifyAutoUploadActivity();
         try
         {
             if (IsCurrentRepository(root))
             {
-                Status = "正在自动上传";
+                Status = "正在自动同步";
                 await StopBackgroundFetchAsync();
             }
+            bool upload = AutoUploadEnabledFor(root), merge = AutoMergeEnabledFor(root);
             string? result = await Task.Run(async () =>
             {
                 if (summary is not null)
@@ -43,7 +44,8 @@ public sealed partial class MainViewModel
                 string message = summary is null ? "已推送" : $"已提交 {files.Count} 个文件";
                 if (hasRemote)
                 {
-                    var outcome = await Git.SynchronizeVersionsAsync(root, null, "sync");
+                    var outcome = await Git.SynchronizeAutomaticallyAsync(root, upload, merge, token);
+                    if (outcome.HasConflicts) AppLog.Write("自动合并遇到冲突，已暂停同步，请在改动中处理：" + root);
                     message = summary is null ? outcome.Message : message + "，" + outcome.Message;
                 }
                 else message += "，未设置远程，仅保存到本地";
@@ -55,7 +57,7 @@ public sealed partial class MainViewModel
             if (!_disposed && IsCurrentRepository(root) && !IsBusy)
             {
                 if (summary is not null) SetSummaryCost(summary.Cost);
-                Status = $"{Path.GetFileName(root.TrimEnd('\\', '/'))} 自动上传：{result}";
+                Status = $"{Path.GetFileName(root.TrimEnd('\\', '/'))} 自动同步：{result}";
             }
         }
         finally

@@ -80,7 +80,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (IsBusy) return;
         if (IsRepositoryAutoUploading)
         {
-            Status = "当前仓库正在自动上传，请稍后再执行写操作";
+            Status = "当前仓库正在自动同步，请稍后再执行写操作";
             return;
         }
         _repositoryOpenGeneration++;

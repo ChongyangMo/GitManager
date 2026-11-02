@@ -35,6 +35,7 @@ internal static partial class Program
         settings.Value.GitHub.CommitEmail = ChecksCommitEmail;
         settings.Value.Repositories = [local, other];
         settings.Value.AutoUpload.DisabledRepositories = [local, other];
+        settings.Value.AutoMerge.DisabledRepositories = [local, other];
         using var model = new MainViewModel(settings);
         var window = new MainWindow(model) { ShowInTaskbar = false, ShowActivated = false, Left = -30000, Top = -30000, WindowStartupLocation = WindowStartupLocation.Manual };
         window.Show();

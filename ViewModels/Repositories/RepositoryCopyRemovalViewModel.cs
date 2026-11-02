@@ -11,7 +11,7 @@ public sealed partial class MainViewModel
     {
         if (string.Equals(_autoUploadWriteRoot, bookmark.Path, StringComparison.OrdinalIgnoreCase))
         {
-            Status = "此仓库正在自动上传，请完成后再移除";
+            Status = "此仓库正在自动同步，请完成后再移除";
             return false;
         }
         bool removed = false;

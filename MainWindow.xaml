@@ -96,6 +96,7 @@
                                     </StackPanel>
                                     <TextBlock Text="自动上传" Style="{StaticResource InfoLabel}" />
                                     <CheckBox Content="{Binding AutoUploadDescription}" IsChecked="{Binding IsAutoUploadEnabled}" />
+                                    <CheckBox Content="自动合并远程更新" IsChecked="{Binding IsAutoMergeEnabled}" Margin="0,8,0,0" />
                                     <TextBlock Text="{Binding AutoUploadStatus}" Style="{StaticResource InfoValue}" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,4,0,0" />
                                     <TextBlock Text="最近提交" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding History[0].Subject, FallbackValue=暂无提交}" Style="{StaticResource InfoValue}" />
                                     <TextBlock Text="说明文件" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding Readme.FileName, FallbackValue=无}" Style="{StaticResource InfoValue}" />

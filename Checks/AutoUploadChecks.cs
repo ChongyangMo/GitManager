@@ -7,7 +7,7 @@ namespace GitManager.Checks;
 
 internal static partial class Program
 {
-    private static void RunAutoUploadChecks()
+    private static void RunAutoUploadChecks(bool mergeOnly = false)
     {
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         foreach (string theme in new[] { "Dark", "Controls", "Workspace", "VersionTemplates" })
@@ -15,7 +15,11 @@ internal static partial class Program
         Exception? failure = null;
         app.Startup += async (_, _) =>
         {
-            try { await RunAutoUploadChecksAsync(); await RunAutoUploadResponsivenessChecksAsync(); }
+            try
+            {
+                if (mergeOnly) await RunAutoMergeChecksAsync();
+                else { await RunAutoUploadChecksAsync(); await RunAutoUploadResponsivenessChecksAsync(); }
+            }
             catch (Exception ex) { failure = ex; }
             finally { app.Shutdown(); }
         };
@@ -39,6 +43,7 @@ internal static partial class Program
         var settings = new SettingsStore(Path.Combine(directory, "settings", "settings.json"));
         settings.Value.RepositoryDiscovery.Enabled = false;
         settings.Value.Repositories = [local];
+        settings.Value.AutoMerge.DisabledRepositories = [local];
         settings.Value.AutoUpload.QuietSeconds = 3600;
         using var model = new MainViewModel(settings);
         await model.InitializeAsync(local);

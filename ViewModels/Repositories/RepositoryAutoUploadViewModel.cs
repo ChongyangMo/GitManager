@@ -15,10 +15,10 @@ public sealed partial class MainViewModel
 
     private AutoUploadOptions AutoUpload => Settings.Value.AutoUpload;
     public string AutoUploadDescription => $"改动停止 {RepositoryAutoUpload.DescribeQuiet(AutoUpload.QuietSeconds)}后自动提交并推送到远程";
-    public string AutoUploadStatus => HasRepository && IsAutoUploadEnabled ? _autoUploadStates.GetValueOrDefault(Root, "") : "";
+    public string AutoUploadStatus => HasRepository && (IsAutoUploadEnabled || IsAutoMergeEnabled) ? _autoUploadStates.GetValueOrDefault(Root, "") : "";
     public bool IsAutoUploadEnabled
     {
-        get => HasRepository && !AutoUpload.DisabledRepositories.Contains(Root, StringComparer.OrdinalIgnoreCase);
+        get => HasRepository && AutoUploadEnabledFor(Root);
         set
         {
             if (!HasRepository || value == IsAutoUploadEnabled) return;
@@ -41,6 +41,7 @@ public sealed partial class MainViewModel
     private void NotifyAutoUpload()
     {
         Notify(nameof(IsAutoUploadEnabled));
+        Notify(nameof(IsAutoMergeEnabled));
         Notify(nameof(AutoUploadStatus));
     }
 
@@ -64,7 +65,7 @@ public sealed partial class MainViewModel
     {
         var roots = Settings.Value.Repositories.Concat(AutoUpload.Repositories)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Where(root => !AutoUpload.DisabledRepositories.Contains(root, StringComparer.OrdinalIgnoreCase)
+            .Where(root => (AutoUploadEnabledFor(root) || AutoMergeEnabledFor(root))
                 && !Settings.Value.IgnoredRepositories.Contains(root, StringComparer.OrdinalIgnoreCase)).ToArray();
         foreach (string root in roots)
         {
@@ -78,8 +79,8 @@ public sealed partial class MainViewModel
                 _autoUploadRetryAt[root] = DateTime.UtcNow.AddMinutes(Math.Max(1, AutoUpload.RetryMinutes));
                 string message = AppLog.Clean(ex.Message);
                 SetAutoUploadState(root, $"{DateTime.Now:MM-dd HH:mm} 未完成：{message}");
-                if (IsCurrentRepository(root) && !IsBusy) Status = "自动上传未完成：" + message;
-                AppLog.Write("自动上传失败：" + root, ex);
+                if (IsCurrentRepository(root) && !IsBusy) Status = "自动同步未完成：" + message;
+                AppLog.Write("自动同步失败：" + root, ex);
             }
         }
     }
@@ -93,6 +94,12 @@ public sealed partial class MainViewModel
         var quiet = TimeSpan.FromSeconds(Math.Max(0, AutoUpload.QuietSeconds));
         var files = await Task.Run(() => RepositoryAutoUpload.ReadSettledChangesAsync(Git, root, quiet, token), token);
         if (files is null) return;
+        bool upload = AutoUploadEnabledFor(root), merge = AutoMergeEnabledFor(root);
+        if (!upload && (!merge || files.Count > 0))
+        {
+            if (merge) SetAutoUploadState(root, "等待提交或处理本地修改后自动合并");
+            return;
+        }
         bool hasRemote = await RepositoryAutoUpload.HasRemoteAsync(Git, root, token);
         GeneratedCommitMessage? summary = null;
         if (files.Count > 0)
@@ -105,12 +112,14 @@ public sealed partial class MainViewModel
             // 没有新改动时，只补推之前未推送成功的提交；远程分支尚未获取时也尝试推送一次。
             if (!hasRemote) return;
             int? pending = await RepositoryPushStatus.ReadAsync(Git, root);
-            if (pending == 0) return;
+            if (pending == 0 && !merge) return;
         }
-        if (_disposed || IsBusy || AutoUpload.DisabledRepositories.Contains(root, StringComparer.OrdinalIgnoreCase)
+        if (_disposed || IsBusy || (!AutoUploadEnabledFor(root) && !AutoMergeEnabledFor(root))
             || Settings.Value.IgnoredRepositories.Contains(root, StringComparer.OrdinalIgnoreCase)
             || IsCurrentRepository(root) && IsGeneratingCommitMessage) return;
 
+        // 生成说明期间可能关闭上传，不再提交已读取的工作区改动。
+        if (summary is not null && !AutoUploadEnabledFor(root)) return;
         await WriteAutoUploadAsync(root, files, summary, hasRemote, token);
     }
 
