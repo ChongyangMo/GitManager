@@ -32,6 +32,8 @@ public sealed partial class MainViewModel
                 await StopBackgroundFetchAsync();
             }
             bool upload = AutoUploadEnabledFor(root), merge = AutoMergeEnabledFor(root);
+            if (_disposed || (!upload && !merge) || (summary is not null && !upload)
+                || Settings.Value.IgnoredRepositories.Contains(root, StringComparer.OrdinalIgnoreCase)) return;
             string? result = await Task.Run(async () =>
             {
                 if (summary is not null)
@@ -45,7 +47,11 @@ public sealed partial class MainViewModel
                 if (hasRemote)
                 {
                     var outcome = await Git.SynchronizeAutomaticallyAsync(root, upload, merge, token);
-                    if (outcome.HasConflicts) AppLog.Write("自动合并遇到冲突，已暂停同步，请在改动中处理：" + root);
+                    if (outcome.HasConflicts)
+                    {
+                        AppLog.Write("自动合并遇到冲突，已暂停同步，请在改动中处理：" + root);
+                        outcome = outcome with { Message = outcome.Message + "，自动同步已暂停" };
+                    }
                     message = summary is null ? outcome.Message : message + "，" + outcome.Message;
                 }
                 else message += "，未设置远程，仅保存到本地";

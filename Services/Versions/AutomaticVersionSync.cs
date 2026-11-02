@@ -17,6 +17,7 @@ public sealed partial class GitRepositoryService
         await CheckVersionUnchangedAsync(root, before);
         var state = await ReadVersionsAsync(root, before.Target);
         if (state.HasCommonHistory == false) throw new InvalidOperationException("本地和远程没有共同历史，未执行自动合并或覆盖。");
+        if (state.RemoteHead is null && !upload) return new("远程尚无当前分支，未执行自动合并");
 
         string message = "本地与远程提交已一致";
         if (state.Behind is > 0)

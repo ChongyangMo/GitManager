@@ -66,7 +66,8 @@ public sealed partial class MainViewModel
         var roots = Settings.Value.Repositories.Concat(AutoUpload.Repositories)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Where(root => (AutoUploadEnabledFor(root) || AutoMergeEnabledFor(root))
-                && !Settings.Value.IgnoredRepositories.Contains(root, StringComparer.OrdinalIgnoreCase)).ToArray();
+                && !Settings.Value.IgnoredRepositories.Contains(root, StringComparer.OrdinalIgnoreCase))
+            .OrderBy(root => IsCurrentRepository(root) ? 0 : 1).ToArray();
         foreach (string root in roots)
         {
             if (_disposed) return;
@@ -109,10 +110,9 @@ public sealed partial class MainViewModel
         }
         else
         {
-            // 没有新改动时，只补推之前未推送成功的提交；远程分支尚未获取时也尝试推送一次。
+            // 没有本地改动也要定期获取远程；仅上传时沿用待推送检查。
             if (!hasRemote) return;
-            int? pending = await RepositoryPushStatus.ReadAsync(Git, root);
-            if (pending == 0 && !merge) return;
+            if (!merge && await RepositoryPushStatus.ReadAsync(Git, root) == 0) return;
         }
         if (_disposed || IsBusy || (!AutoUploadEnabledFor(root) && !AutoMergeEnabledFor(root))
             || Settings.Value.IgnoredRepositories.Contains(root, StringComparer.OrdinalIgnoreCase)

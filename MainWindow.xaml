@@ -94,7 +94,7 @@
                                         <TextBlock Text="GitHub 可见性" Style="{StaticResource InfoLabel}" />
                                         <DockPanel><Button x:Name="GitHubVisibilityButton" DockPanel.Dock="Right" Content="{Binding GitHubVisibilityAction}" Style="{StaticResource QuietButton}" Padding="8,0" MinHeight="26" Margin="8,0,0,0" VerticalAlignment="Center" Click="GitHubVisibilityClicked" Visibility="{Binding CanChangeGitHubVisibility, Converter={StaticResource BoolVisibility}}" /><TextBlock Text="{Binding GitHubVisibilityText}" Style="{StaticResource InfoValue}" VerticalAlignment="Center" /></DockPanel>
                                     </StackPanel>
-                                    <TextBlock Text="自动上传" Style="{StaticResource InfoLabel}" />
+                                    <TextBlock Text="自动同步" Style="{StaticResource InfoLabel}" />
                                     <CheckBox Content="{Binding AutoUploadDescription}" IsChecked="{Binding IsAutoUploadEnabled}" />
                                     <CheckBox Content="自动合并远程更新" IsChecked="{Binding IsAutoMergeEnabled}" Margin="0,8,0,0" />
                                     <TextBlock Text="{Binding AutoUploadStatus}" Style="{StaticResource InfoValue}" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,4,0,0" />

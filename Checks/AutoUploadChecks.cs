@@ -24,7 +24,7 @@ internal static partial class Program
             finally { app.Shutdown(); }
         };
         app.Run();
-        if (failure is not null) throw new InvalidOperationException("自动上传检查失败。", failure);
+        if (failure is not null) throw new InvalidOperationException("自动同步检查失败。", failure);
     }
 
     private static async Task RunAutoUploadChecksAsync()
