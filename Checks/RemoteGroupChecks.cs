@@ -20,6 +20,11 @@ internal static partial class Program
         Check(RepositoryRemoteGroup.FromRemote("ssh://git@10.18.32.67/team/p.git", "", "") == "10.18.32.67", "其他主机按主机名分组");
         Check(RepositoryRemoteGroup.FromRemote(@"C:\repos\shared.git", "", "") == RepositoryRemoteGroup.LocalPath
             && RepositoryRemoteGroup.FromRemote("file:///C:/repos/shared.git", "", "") == RepositoryRemoteGroup.LocalPath, "本地路径远程归入本地路径");
+        Check(RepositoryTargetIdentity.FromRemote("https://github.com/example/maico.git")
+            == RepositoryTargetIdentity.FromRemote("git@github.com:example/maico.git"), "同一 GitHub 仓库的不同地址格式使用同一目标");
+        Check(RepositoryTargetIdentity.FromRemote(@"C:\repos\maico")
+            == RepositoryTargetIdentity.FromRemote("file:///C:/repos/maico"), "本地目标地址格式使用同一目标");
+        Check(RepositoryTargetIdentity.FromRemote("") != RepositoryTargetIdentity.FromRemote("https://github.com/example/maico.git"), "本地仓库与 GitHub 仓库使用不同目标");
 
         string root = CheckDirectories.Create("RemoteGroupChecks");
         string Repo(string name, params string[][] commands)
@@ -61,6 +66,15 @@ internal static partial class Program
                     group.Name + "：" + string.Join("、", group.Items.Cast<RepositoryBookmark>().Select(item => Path.GetFileName(item.Path)))));
                 Check(actual == "服务云：cloud-c | GitHub：github-b、github-e、upstream-f | gitlab.example.com：gitlab-d | 仅本地：local-a",
                     "导航栏按远程服务分组，组内保持原有顺序：" + actual);
+                var localBookmark = viewModel.Repositories.Single(item => item.Path == local);
+                var githubBookmark = viewModel.Repositories.Single(item => item.Path == githubB);
+                localBookmark.UpdateDisplayName("Maico");
+                githubBookmark.UpdateDisplayName("Maico");
+                Check(!localBookmark.HasNameConflict && !githubBookmark.HasNameConflict
+                    && viewModel.GetSameNameRepositories(localBookmark).Count == 1,
+                    "不同目标仓库即使同名也不显示同名提醒");
+                localBookmark.UpdateDisplayName(null);
+                githubBookmark.UpdateDisplayName(null);
                 var list = (ListBox)window.FindName("RepositoryList");
                 Check(list.SelectedItem is RepositoryBookmark selected && selected.Path == viewModel.Repository?.Path && viewModel.Repository?.Path == local,
                     "移入分组后仍选中当前仓库");

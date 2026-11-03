@@ -1,4 +1,5 @@
 using GitManager.ViewModels;
+using GitManager.Services.Repositories;
 
 namespace GitManager.Models;
 
@@ -7,6 +8,7 @@ public sealed class RepositoryBookmark(string path) : ObservableObject
     private string? _displayName;
     private bool _hasNameConflict;
     private string _conflictHint = "";
+    private string _repositoryTarget = "";
     private int? _pendingPushCount;
     public int? PendingPushCount => _pendingPushCount;
     public bool HasPendingPush => _pendingPushCount is > 0;
@@ -27,6 +29,7 @@ public sealed class RepositoryBookmark(string path) : ObservableObject
         return true;
     }
     public string Name => _displayName ?? (System.IO.Path.GetFileName(Path.TrimEnd('\\', '/')) is { Length: > 0 } name ? name : Path);
+    public string RepositoryTarget => _repositoryTarget;
     public bool HasNameConflict { get => _hasNameConflict; private set => Set(ref _hasNameConflict, value); }
     public string ConflictHint { get => _conflictHint; private set => Set(ref _conflictHint, value); }
     public void UpdateNameConflict(IReadOnlyList<RepositoryBookmark> copies)
@@ -38,6 +41,7 @@ public sealed class RepositoryBookmark(string path) : ObservableObject
     {
         if (Set(ref _displayName, string.IsNullOrWhiteSpace(name) ? null : name)) Notify(nameof(Name));
     }
+    public void UpdateRepositoryTarget(string? remote) => Set(ref _repositoryTarget, RepositoryTargetIdentity.FromRemote(remote), nameof(RepositoryTarget));
     public string RemoteGroup { get => _remoteGroup; private set => Set(ref _remoteGroup, value); }
     public void UpdateRemoteGroup(string group) => RemoteGroup = group;
     private string _remoteGroup = "";

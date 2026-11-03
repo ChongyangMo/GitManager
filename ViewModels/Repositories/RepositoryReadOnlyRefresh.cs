@@ -12,26 +12,32 @@ public sealed partial class MainViewModel
 
     private async Task InitializeWorkspaceAsync(string? repository)
     {
-        // 先打开已保存的仓库，目录扫描、分组和状态识别在后台独立进行。
+        // 首屏先完成已保存仓库的读取，避免目录扫描状态覆盖仓库加载状态；扫描随后在后台执行。
         string? path = repository ?? Settings.Value.LastRepository ?? Repositories.FirstOrDefault()?.Path;
-        if (path is not null && !HasRepository) await OpenRepositoryAsync(path);
-        var workspace = _workspaceRefreshTask;
-        var discovery = DiscoverRepositoriesAsync();
+        Task? workspace = null;
+        if (path is not null && !HasRepository)
+        {
+            await OpenRepositoryAsync(path);
+            workspace = _workspaceRefreshTask;
+            if (workspace is not null) await workspace;
+        }
         if (path is null)
         {
-            await discovery;
+            await DiscoverRepositoriesAsync();
             if (!_disposed && !HasRepository && !IsBusy && Repositories.FirstOrDefault() is { } first)
             {
                 await OpenRepositoryAsync(first.Path);
                 workspace = _workspaceRefreshTask;
+                if (workspace is not null) await workspace;
             }
         }
-        if (workspace is not null) await workspace;
         if (_disposed) return;
         StartRepositoryPushMonitoring();
         StartAutoUploadMonitoring();
         _ = PreloadRepositoriesAsync();
         _ = EnsureCommitEmailAsync();
+        // 有已有仓库时，首屏已经可用，再开始扫描，避免扫描期间显示半加载页面。
+        if (path is not null) _ = DiscoverRepositoriesAsync(showStatus: false);
     }
 
     public Task RefreshAsync()

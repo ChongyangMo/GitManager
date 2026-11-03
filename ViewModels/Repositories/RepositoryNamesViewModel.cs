@@ -13,6 +13,7 @@ public sealed partial class MainViewModel
             var cloud = Settings.Value.ServiceCloud;
             var (address, group) = await RepositoryRemoteGroup.ReadAsync(Git, bookmark.Path, cloud.BaseUrl, cloud.GitBaseUrl);
             bookmark.UpdateDisplayName(RepositoryDisplayName.FromRemote(address));
+            bookmark.UpdateRepositoryTarget(address);
             bookmark.UpdateRemoteGroup(group);
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.IO.IOException)

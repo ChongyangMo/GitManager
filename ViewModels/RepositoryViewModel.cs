@@ -57,6 +57,7 @@ public sealed partial class MainViewModel
     public Task SaveRemoteAsync(string url) => ExecuteAsync("正在保存远程地址", async () =>
     {
         await Git.SaveRemoteAsync(Root, url, _versions?.RemoteName is { Length: > 0 } name ? name : "origin");
+        if (Repository is { } bookmark) await RefreshRepositoryNameAsync(bookmark);
         await RefreshCoreAsync();
         await FetchRemoteCoreAsync(tolerateFailure: true);
         await RefreshVersionsCoreAsync();

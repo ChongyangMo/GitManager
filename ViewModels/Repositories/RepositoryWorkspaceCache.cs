@@ -36,6 +36,7 @@ public sealed partial class MainViewModel
         _hasHead = snapshot.HasHead;
         Remote = snapshot.Remote;
         Repository?.UpdateDisplayName(Services.Repositories.RepositoryDisplayName.FromRemote(snapshot.Remote));
+        if (snapshot.Remote.Length > 0) Repository?.UpdateRepositoryTarget(snapshot.Remote);
         UserName = snapshot.UserName; UserEmail = snapshot.UserEmail;
         if (UserEmail.Length == 0) _ = EnsureCommitEmailAsync();
         CommitMessage = view.Message;

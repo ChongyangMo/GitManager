@@ -33,19 +33,19 @@ public sealed partial class MainViewModel
         AppLog.Write($"已自动加入 {additions.Length} 个本地仓库");
     }
 
-    public Task DiscoverRepositoriesAsync()
+    public Task DiscoverRepositoriesAsync(bool showStatus = true)
     {
         if (_disposed) return Task.CompletedTask;
         if (_repositoryDiscoveryTask is { IsCompleted: false }) return _repositoryDiscoveryTask;
-        return _repositoryDiscoveryTask = DiscoverInBackgroundAsync();
+        return _repositoryDiscoveryTask = DiscoverInBackgroundAsync(showStatus);
     }
 
-    private async Task DiscoverInBackgroundAsync()
+    private async Task DiscoverInBackgroundAsync(bool showStatus)
     {
         _discoveringRepositories = true;
         Notify(nameof(IsDiscoveringRepositories));
         const string message = "正在识别本地仓库";
-        if (!IsBusy) Status = message;
+        if (showStatus && !IsBusy) Status = message;
         try
         {
             await DiscoverRepositoriesCoreAsync();
@@ -54,13 +54,13 @@ public sealed partial class MainViewModel
             if (_disposed) return;
             _ = RefreshRepositoryPushIndicatorsAsync();
             _ = PreloadRepositoriesAsync();
-            if (!IsBusy && Status == message) Status = "就绪";
+            if (showStatus && !IsBusy && Status == message) Status = "就绪";
         }
         catch (OperationCanceledException) when (_disposed) { }
         catch (Exception ex)
         {
             AppLog.Write("后台识别本地仓库失败", ex);
-            if (!_disposed && !IsBusy && Status == message) Status = AppLog.Clean(ex.Message);
+            if (showStatus && !_disposed && !IsBusy && Status == message) Status = AppLog.Clean(ex.Message);
         }
         finally { _discoveringRepositories = false; Notify(nameof(IsDiscoveringRepositories)); }
     }
