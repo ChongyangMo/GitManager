@@ -25,6 +25,14 @@ internal static partial class Program
         Check(RepositoryTargetIdentity.FromRemote(@"C:\repos\maico")
             == RepositoryTargetIdentity.FromRemote("file:///C:/repos/maico"), "本地目标地址格式使用同一目标");
         Check(RepositoryTargetIdentity.FromRemote("") != RepositoryTargetIdentity.FromRemote("https://github.com/example/maico.git"), "本地仓库与 GitHub 仓库使用不同目标");
+        Check(string.Join(",", RepositorySystemName.Prefixes("YingChuiNAS")) == "ying,yingchui,yingchuinas"
+            && string.Join(",", RepositorySystemName.Prefixes("yingchui-ios")) == "yingchui,yingchuiios"
+            && string.Join(",", RepositorySystemName.Prefixes("SDServiceCloud")) == "sd,sdservice,sdservicecloud", "按词边界截出名称开头");
+        int[] systemOrder = RepositorySystemName.ListOrder([("YingChuiNAS", "GitHub"), ("GitManager", "GitHub"), ("SE", "服务云"), ("DeviceStudio", "GitHub"),
+            ("yingchui-ios", "GitHub"), ("se-core", "GitHub"), ("DeviceHardware", "GitHub"), ("MacStream", "GitHub"), ("Maico", "GitHub")]);
+        string[] systemNames = ["YingChuiNAS", "GitManager", "SE", "DeviceStudio", "yingchui-ios", "se-core", "DeviceHardware", "MacStream", "Maico"];
+        Check(string.Join(",", systemNames.Zip(systemOrder).Where(item => item.First != "SE").OrderBy(item => item.Second).Select(item => item.First))
+            == "YingChuiNAS,yingchui-ios,GitManager,DeviceStudio,DeviceHardware,se-core,MacStream,Maico", "同一分组内同一套系统的仓库相邻，其余保持原有顺序");
 
         string root = CheckDirectories.Create("RemoteGroupChecks");
         string Repo(string name, params string[][] commands)
@@ -42,6 +50,8 @@ internal static partial class Program
             ["config", "gitmanager.serviceCloudUrl", "https://sdserver.example.com/git/team/cloud-c.git"]);
         string githubE = Repo("github-e", ["remote", "add", "origin", "https://github.com/example/github-e.git"]);
         string upstream = Repo("upstream-f", ["remote", "add", "upstream", "https://github.com/example/upstream-f.git"]);
+        string nas = Repo("yc-nas", ["remote", "add", "origin", "https://github.com/example/YingChuiNAS.git"]);
+        string ios = Repo("yc-ios", ["remote", "add", "origin", "https://github.com/example/yingchui-ios.git"]);
 
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         foreach (string theme in new[] { "Light", "Controls", "Workspace", "VersionTemplates" })
@@ -51,7 +61,7 @@ internal static partial class Program
         {
             var settings = new SettingsStore(Path.Combine(CheckDirectories.Create("Checks"), "settings.json"));
             settings.Value.RepositoryDiscovery.Enabled = false;
-            settings.Value.Repositories = [githubB, local, gitlab, cloud, githubE, upstream];
+            settings.Value.Repositories = [githubB, local, nas, gitlab, cloud, githubE, upstream, ios];
             using var viewModel = new MainViewModel(settings);
             var window = new MainWindow(viewModel) { ShowInTaskbar = false, ShowActivated = false, Left = -30000, Top = -30000, WindowStartupLocation = WindowStartupLocation.Manual };
             window.Show();
@@ -64,8 +74,8 @@ internal static partial class Program
                 var view = (ListCollectionView)CollectionViewSource.GetDefaultView(viewModel.Repositories);
                 string actual = string.Join(" | ", view.Groups.Cast<CollectionViewGroup>().Select(group =>
                     group.Name + "：" + string.Join("、", group.Items.Cast<RepositoryBookmark>().Select(item => Path.GetFileName(item.Path)))));
-                Check(actual == "服务云：cloud-c | GitHub：github-b、github-e、upstream-f | gitlab.example.com：gitlab-d | 仅本地：local-a",
-                    "导航栏按远程服务分组，组内保持原有顺序：" + actual);
+                Check(actual == "服务云：cloud-c | GitHub：github-b、github-e、yc-nas、yc-ios、upstream-f | gitlab.example.com：gitlab-d | 仅本地：local-a",
+                    "导航栏按远程服务分组，组内同一套系统相邻，其余保持原有顺序：" + actual);
                 var localBookmark = viewModel.Repositories.Single(item => item.Path == local);
                 var githubBookmark = viewModel.Repositories.Single(item => item.Path == githubB);
                 localBookmark.UpdateDisplayName("Maico");

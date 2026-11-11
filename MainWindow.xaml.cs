@@ -32,6 +32,9 @@ public partial class MainWindow : Window
         view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(RepositoryBookmark.RemoteGroup)) { CustomSort = new RemoteGroupComparer() });
         view.LiveGroupingProperties.Add(nameof(RepositoryBookmark.RemoteGroup));
         view.IsLiveGrouping = true;
+        view.SortDescriptions.Add(new System.ComponentModel.SortDescription(nameof(RepositoryBookmark.ListOrder), System.ComponentModel.ListSortDirection.Ascending));
+        view.LiveSortingProperties.Add(nameof(RepositoryBookmark.ListOrder));
+        view.IsLiveSorting = true;
         ViewModel.Repositories.CollectionChanged += (_, e) =>
         {
             foreach (RepositoryBookmark bookmark in e.NewItems ?? Array.Empty<RepositoryBookmark>()) bookmark.PropertyChanged += RepositoryGroupChanged;
@@ -41,7 +44,7 @@ public partial class MainWindow : Window
     }
     private void RepositoryGroupChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(RepositoryBookmark.RemoteGroup)) return;
+        if (e.PropertyName is not (nameof(RepositoryBookmark.RemoteGroup) or nameof(RepositoryBookmark.ListOrder))) return;
         Dispatcher.BeginInvoke(() =>
         {
             if (RepositoryList.SelectedItem != ViewModel.Repository)

@@ -15,11 +15,20 @@ public sealed partial class MainViewModel
         if (e.NewItems is not null)
             foreach (RepositoryBookmark bookmark in e.NewItems) bookmark.PropertyChanged += RepositoryBookmarkChanged;
         UpdateRepositoryNameConflicts();
+        UpdateRepositoryListOrder();
     }
 
     private void RepositoryBookmarkChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(RepositoryBookmark.Name) or nameof(RepositoryBookmark.RepositoryTarget)) UpdateRepositoryNameConflicts();
+        if (e.PropertyName is nameof(RepositoryBookmark.Name) or nameof(RepositoryBookmark.RemoteGroup)) UpdateRepositoryListOrder();
+    }
+
+    private void UpdateRepositoryListOrder()
+    {
+        var items = Repositories.ToArray();
+        int[] order = Services.Repositories.RepositorySystemName.ListOrder(items.Select(item => (item.Name, item.RemoteGroup)).ToArray());
+        for (int index = 0; index < items.Length; index++) items[index].UpdateListOrder(order[index]);
     }
 
     private void UpdateRepositoryNameConflicts()

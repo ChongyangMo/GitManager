@@ -45,6 +45,10 @@ public sealed class RepositoryBookmark(string path) : ObservableObject
     public string RemoteGroup { get => _remoteGroup; private set => Set(ref _remoteGroup, value); }
     public void UpdateRemoteGroup(string group) => RemoteGroup = group;
     private string _remoteGroup = "";
+    // 导航栏组内排序值：同一套系统的仓库相邻。
+    public int ListOrder { get => _listOrder; private set => Set(ref _listOrder, value); }
+    public void UpdateListOrder(int order) => ListOrder = order;
+    private int _listOrder;
 }
 
 public sealed class ChangedFile(string path, string? originalPath, char indexState, char worktreeState) : ObservableObject
