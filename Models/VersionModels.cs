@@ -6,7 +6,11 @@ public sealed record RemoteBranch(string RemoteName, string Name)
     public string FullRef => "refs/remotes/" + Display;
 }
 
-public sealed record RemoteAddress(string Name, string Url);
+public sealed record RemoteAddress(string Name, string Url)
+{
+    public string? WebUrl { get; } = Services.Repositories.RemoteWebAddress.FromRemote(Url);
+    public bool HasWebUrl => WebUrl is not null;
+}
 
 public sealed record VersionChoice(string Source, CommitInfo Commit)
 {

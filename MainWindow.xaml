@@ -79,10 +79,12 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Border x:Name="RemoteRow" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Margin="0,8,0,0" Padding="0,8,0,0">
-                                                    <StackPanel><TextBlock Text="{Binding Name}" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,0,0,2" /><TextBlock Text="{Binding Url}" Style="{StaticResource InfoValue}" /></StackPanel>
+                                                    <StackPanel><TextBlock Text="{Binding Name}" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,0,0,2" /><TextBlock x:Name="RemoteUrlText" Text="{Binding Url}" Style="{StaticResource InfoValue}" />
+                                                        <TextBlock x:Name="RemoteUrlLink" TextWrapping="Wrap" Visibility="Collapsed"><Hyperlink NavigateUri="{Binding WebUrl}" RequestNavigate="RemoteAddressNavigate" ToolTip="{Binding WebUrl}" Foreground="{DynamicResource AccentBrush}" AutomationProperties.Name="{Binding Url}"><Run Text="{Binding Url, Mode=OneWay}" /></Hyperlink></TextBlock></StackPanel>
                                                 </Border>
                                                 <DataTemplate.Triggers>
                                                     <DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}" Value="{x:Null}"><Setter TargetName="RemoteRow" Property="BorderThickness" Value="0" /><Setter TargetName="RemoteRow" Property="Margin" Value="0" /><Setter TargetName="RemoteRow" Property="Padding" Value="0" /></DataTrigger>
+                                                    <DataTrigger Binding="{Binding HasWebUrl}" Value="True"><Setter TargetName="RemoteUrlText" Property="Visibility" Value="Collapsed" /><Setter TargetName="RemoteUrlLink" Property="Visibility" Value="Visible" /></DataTrigger>
                                                 </DataTemplate.Triggers>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -100,7 +102,7 @@
                                     <TextBlock Text="{Binding AutoUploadStatus}" Style="{StaticResource InfoValue}" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,4,0,0" />
                                     <TextBlock Text="最近提交" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding History[0].Subject, FallbackValue=暂无提交}" Style="{StaticResource InfoValue}" />
                                     <TextBlock Text="说明文件" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding Readme.FileName, FallbackValue=无}" Style="{StaticResource InfoValue}" />
-                                    <StackPanel Orientation="Horizontal" Margin="0,22,0,0"><Button Content="打开文件夹" Style="{StaticResource WorkspaceButton}" Margin="0,0,8,0" Click="OpenRepositoryFolderClicked" /><Button Content="打开说明文件" Style="{StaticResource WorkspaceButton}" Click="OpenReadmeClicked" IsEnabled="{Binding HasReadme}" views:BusyFeedback.DeferDisabledLook="False" /></StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,22,0,0"><Button Content="打开文件夹" Style="{StaticResource WorkspaceButton}" Margin="0,0,8,0" Click="OpenRepositoryFolderClicked" /><Button Content="打开说明文件" Style="{StaticResource WorkspaceButton}" Click="OpenReadmeClicked" IsEnabled="{Binding HasReadme}" views:BusyFeedback.DeferDisabledLook="False" /><Button Content="删除仓库" Style="{StaticResource DangerButton}" MinHeight="34" Margin="8,0,0,0" Click="DeleteCurrentRepositoryClicked" ToolTip="把本地仓库目录（源码、文件和 .git 历史）移到回收站，并从列表移除" /></StackPanel>
                                     </StackPanel>
                                 </StackPanel>
                             </ScrollViewer>

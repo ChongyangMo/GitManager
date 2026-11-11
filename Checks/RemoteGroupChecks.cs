@@ -25,6 +25,12 @@ internal static partial class Program
         Check(RepositoryTargetIdentity.FromRemote(@"C:\repos\maico")
             == RepositoryTargetIdentity.FromRemote("file:///C:/repos/maico"), "本地目标地址格式使用同一目标");
         Check(RepositoryTargetIdentity.FromRemote("") != RepositoryTargetIdentity.FromRemote("https://github.com/example/maico.git"), "本地仓库与 GitHub 仓库使用不同目标");
+        Check(RemoteWebAddress.FromRemote("https://github.com/ChongyangMo/TouchScreen.git") == "https://github.com/ChongyangMo/TouchScreen"
+            && RemoteWebAddress.FromRemote("git@github.com:a/b.git") == "https://github.com/a/b"
+            && RemoteWebAddress.FromRemote("ssh://git@10.18.32.67:2222/team/p.git") == "https://10.18.32.67/team/p"
+            && RemoteWebAddress.FromRemote("https://user:token@sdserver.example.com/git/team/se.git") == "https://sdserver.example.com/git/team/se"
+            && RemoteWebAddress.FromRemote(@"C:\repos\shared.git") is null && RemoteWebAddress.FromRemote("file:///C:/repos/shared.git") is null
+            && RemoteWebAddress.FromRemote("") is null, "远程地址换成可点击的网页地址，本地路径不可点击");
         Check(string.Join(",", RepositorySystemName.Prefixes("YingChuiNAS")) == "ying,yingchui,yingchuinas"
             && string.Join(",", RepositorySystemName.Prefixes("yingchui-ios")) == "yingchui,yingchuiios"
             && string.Join(",", RepositorySystemName.Prefixes("SDServiceCloud")) == "sd,sdservice,sdservicecloud", "按词边界截出名称开头");
@@ -93,6 +99,12 @@ internal static partial class Program
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 SaveScreenshot(window, Path.Combine(Directory.GetCurrentDirectory(), "artifacts", "sidebar-remote-groups.dark.png"));
                 await viewModel.SetThemeAsync("Light");
+                var current = viewModel.Repository!;
+                File.WriteAllText(Path.Combine(current.Path, "源码.txt"), "未提交");
+                Check(await viewModel.RemoveRepositoryCopyAsync(current, true) && !Directory.Exists(local)
+                    && viewModel.Repositories.All(item => item.Path != local) && !settings.Value.Repositories.Contains(local)
+                    && viewModel.Repository is { } next && next.Path != local,
+                    "删除当前仓库会把目录移到回收站、移出列表并打开下一个仓库");
             }
             catch (Exception ex) { failure = ex; }
             finally { app.Shutdown(); }

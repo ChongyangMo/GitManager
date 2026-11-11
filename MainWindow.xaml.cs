@@ -212,6 +212,12 @@ public partial class MainWindow : Window
         if (ViewModel.Repository is { } repository && Directory.Exists(repository.Path))
             Process.Start(new ProcessStartInfo("explorer.exe", repository.Path) { UseShellExecute = true });
     }
+    private void RemoteAddressNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+    {
+        e.Handled = true;
+        if (e.Uri is { IsAbsoluteUri: true, Scheme: "http" or "https" } uri)
+            Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+    }
     private void OpenReadmeClicked(object sender, RoutedEventArgs e)
     {
         if (ViewModel.Readme is { } readme && File.Exists(readme.Path))
