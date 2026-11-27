@@ -80,6 +80,21 @@ public partial class MainWindow : Window
     {
         if (ChooseFolder("添加本地仓库") is { } path) await ViewModel.OpenRepositoryAsync(path);
     }
+    private async void AddRemoteRepositoryClicked(object sender, RoutedEventArgs e)
+    {
+        string defaultAlias = ViewModel.Settings.Value.RemoteHosts?.Hosts.FirstOrDefault(host => host.Enabled)?.Alias is { Length: > 0 } alias ? alias : "macmini";
+        var dialog = new FormWindow("添加远端仓库", new("主机别名", defaultAlias), new("远端绝对路径")) { Owner = this };
+        if (dialog.ShowDialog() != true) return;
+        try
+        {
+            string remotePath = Services.Remote.RemoteRepositoryPath.Format(dialog.Fields[0].Value, dialog.Fields[1].Value);
+            await ViewModel.OpenRepositoryAsync(remotePath);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, Services.AppLog.Clean(ex.Message), "无法添加远端仓库", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
     private async void CreateRepositoryClicked(object sender, RoutedEventArgs e)
     {
         if (ChooseFolder("选择要建立仓库的文件夹") is { } path) await ViewModel.CreateRepositoryAsync(path);
@@ -207,9 +222,15 @@ public partial class MainWindow : Window
         Directory.CreateDirectory(directory);
         Process.Start(new ProcessStartInfo("explorer.exe", directory) { UseShellExecute = true });
     }
-    private void OpenRepositoryFolderClicked(object sender, RoutedEventArgs e)
+    private async void OpenRepositoryFolderClicked(object sender, RoutedEventArgs e)
     {
-        if (ViewModel.Repository is { } repository && Directory.Exists(repository.Path))
+        if (ViewModel.Repository is not { } repository) return;
+        if (repository.IsRemote)
+        {
+            await ViewModel.ExecuteAsync("正在远端打开目录", async () => await ViewModel.Git.RemoteFiles.OpenInFinderAsync(repository.Path));
+            return;
+        }
+        if (Directory.Exists(repository.Path))
             Process.Start(new ProcessStartInfo("explorer.exe", repository.Path) { UseShellExecute = true });
     }
     private void RemoteAddressNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
@@ -220,7 +241,7 @@ public partial class MainWindow : Window
     }
     private void OpenReadmeClicked(object sender, RoutedEventArgs e)
     {
-        if (ViewModel.Readme is { } readme && File.Exists(readme.Path))
+        if (ViewModel.Readme is { IsRemote: false } readme && File.Exists(readme.Path))
             Process.Start(new ProcessStartInfo(readme.Path) { UseShellExecute = true });
     }
     private async void WindowKeyDown(object sender, KeyEventArgs e)

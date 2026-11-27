@@ -24,10 +24,13 @@ public partial class MainWindow
             menu.Items.Add(restore);
         }
         menu.Items.Add(remove);
-        var delete = new MenuItem { Header = "删除仓库（移到回收站）…", CommandParameter = bookmark };
-        delete.SetResourceReference(ForegroundProperty, "DangerBrush");
-        delete.Click += DeleteRepositoryClicked;
-        menu.Items.Add(delete);
+        if (!bookmark.IsRemote)
+        {
+            var delete = new MenuItem { Header = "删除仓库（移到回收站）…", CommandParameter = bookmark };
+            delete.SetResourceReference(ForegroundProperty, "DangerBrush");
+            delete.Click += DeleteRepositoryClicked;
+            menu.Items.Add(delete);
+        }
     }
 
     private async void DeleteRepositoryClicked(object sender, RoutedEventArgs e)
@@ -44,6 +47,11 @@ public partial class MainWindow
     private async Task DeleteRepositoryAsync(RepositoryBookmark bookmark)
     {
         if (ViewModel.IsBusy) return;
+        if (bookmark.IsRemote)
+        {
+            MessageBox.Show(this, "远端主机上的仓库不支持从 Windows 直接删除，请在远端设备删除或右键选择“移除记录”。", "无法删除远端仓库", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
         var risks = new List<string>();
         try
         {

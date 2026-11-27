@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.chongyang.gitmanager.discovery</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/chongyang/.local/share/gitmanager-discovery/agent.py</string>
+        <string>/Users/chongyang/.config/gitmanager-discovery/config.json</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/chongyang/Library/Logs/gitmanager-discovery.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/chongyang/Library/Logs/gitmanager-discovery.log</string>
+</dict>
+</plist>

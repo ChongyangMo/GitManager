@@ -22,6 +22,8 @@ public sealed class RepositoryCopyReader(GitRepositoryService git)
         var copies = await Task.WhenAll(entries.Select(entry => Task.Run(() =>
         {
             if (entry.Snapshot.Error.Length > 0) return entry.Snapshot;
+            if (Remote.RemoteRepositoryPath.IsRemote(entry.Snapshot.Path))
+                return entry.Snapshot with { Error = "远端主机副本暂不支持逐文件本地内容比较" };
             try
             {
                 return entry.Snapshot with { Files = ReadFiles(entry, shared, token, progress) };

@@ -6,6 +6,7 @@ public static class RepositoryPaths
 {
     public static string Actual(string path)
     {
+        if (Remote.RemoteRepositoryPath.IsRemote(path)) return Remote.RemoteRepositoryPath.Normalize(path);
         try
         {
             string fullPath = RepositoryDiscovery.Normalize(path);

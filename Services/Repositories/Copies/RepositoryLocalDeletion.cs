@@ -11,6 +11,8 @@ public sealed class RepositoryLocalDeletion(GitRepositoryService git)
     public async Task<string> RecycleAsync(RepositoryBookmark bookmark, IEnumerable<string> otherRepositories,
         Func<IReadOnlyList<DirectoryLockHolder>, bool>? confirmRelease = null)
     {
+        if (Remote.RemoteRepositoryPath.IsRemote(bookmark.Path))
+            throw new InvalidOperationException("远端主机上的仓库不支持从 Windows 直接删除，请在远端设备删除或仅移除记录。");
         string root = await git.OpenAsync(bookmark.Path);
         var dirs = (await git.Runner.RunAsync(root, ["rev-parse", "--path-format=absolute", "--git-common-dir", "--absolute-git-dir"])).Output
             .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

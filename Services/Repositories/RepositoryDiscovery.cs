@@ -12,7 +12,7 @@ public sealed class RepositoryDiscovery(GitRepositoryService git)
         "target", "dist", "build", ".venv", "venv", "__pycache__", ".cache", "packages"
     };
 
-    public static string Normalize(string path) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+    public static string Normalize(string path) => Remote.RemoteRepositoryPath.Normalize(path);
 
     public static IReadOnlyList<string> GetRoots(RepositoryDiscoveryOptions options, IEnumerable<string> bookmarks)
     {
@@ -21,6 +21,7 @@ public sealed class RepositoryDiscovery(GitRepositoryService git)
         roots.AddRange(options.Roots);
         foreach (string bookmark in bookmarks)
         {
+            if (Remote.RemoteRepositoryPath.IsRemote(bookmark)) continue;
             try
             {
                 if (Path.GetDirectoryName(Normalize(bookmark)) is { } parent && Directory.GetParent(parent) is not null

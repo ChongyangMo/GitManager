@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using GitManager.Models;
+using GitManager.Services.Remote;
 
 namespace GitManager.Services.CommitMessages;
 
@@ -22,21 +23,50 @@ public sealed class CommitContentReader(GitRepositoryService git)
         var batches = new CommitContentBatchBuilder(options);
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         AppendHash(source.Fingerprint);
+        Dictionary<string, RemoteWorkingFileInfo>? remoteInfos = null;
+        if (RemoteRepositoryPath.TryParse(root, out string alias, out _))
+        {
+            string gitPath = git.Runner.Remote?.Options.Find(alias)?.EffectiveGitPath ?? "/usr/bin/git";
+            var requests = source.Files.Select(file =>
+            {
+                bool tracked = file.Action != "新增" || file.Added.HasValue;
+                bool needText = !file.Binary && (!tracked || head.ExitCode != 0);
+                return (file.Path, needText);
+            }).ToArray();
+            remoteInfos = await git.RemoteFiles.InspectWorkingFilesAsync(root, requests, gitPath, token);
+        }
         foreach (var file in source.Files)
         {
             token.ThrowIfCancellationRequested();
-            string path = Path.Combine(root, file.Path);
             string contentHash = "不存在";
-            bool isFile = File.Exists(path), isLink = (isFile || Directory.Exists(path))
-                && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
-            if (isLink) contentHash = "链接:" + new FileInfo(path).LinkTarget;
-            else if (Directory.Exists(path))
-                contentHash = (await git.Runner.RunAsync(path, ["rev-parse", "--verify", "HEAD"], true, token)).Output;
-            else if (isFile)
+            bool isFile = false, isLink = false;
+            string? linkTarget = null;
+            RemoteWorkingFileInfo? remoteInfo = null;
+            if (remoteInfos is not null)
             {
-                await using var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete,
-                    65536, FileOptions.Asynchronous | FileOptions.SequentialScan);
-                contentHash = Convert.ToHexString(await SHA256.HashDataAsync(input, token));
+                remoteInfos.TryGetValue(file.Path, out remoteInfo);
+                if (remoteInfo is not null)
+                {
+                    contentHash = remoteInfo.ContentHash;
+                    isFile = remoteInfo.IsFile;
+                    isLink = remoteInfo.IsLink;
+                    linkTarget = remoteInfo.LinkTarget;
+                }
+            }
+            else
+            {
+                string path = Path.Combine(root, file.Path);
+                isFile = File.Exists(path);
+                isLink = (isFile || Directory.Exists(path)) && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
+                if (isLink) { linkTarget = new FileInfo(path).LinkTarget; contentHash = "链接:" + linkTarget; }
+                else if (Directory.Exists(path))
+                    contentHash = (await git.Runner.RunAsync(path, ["rev-parse", "--verify", "HEAD"], true, token)).Output;
+                else if (isFile)
+                {
+                    await using var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete,
+                        65536, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                    contentHash = Convert.ToHexString(await SHA256.HashDataAsync(input, token));
+                }
             }
             AppendHash(JsonSerializer.Serialize(new { file.Path, file.OriginalPath, contentHash }));
             string details = JsonSerializer.Serialize(new { file.Path, file.OriginalPath, file.Action }, ReadableJson);
@@ -44,8 +74,22 @@ public sealed class CommitContentReader(GitRepositoryService git)
             bool tracked = file.Action != "新增" || file.Added.HasValue;
             if (file.Binary) patch = "二进制文件，省略内容。";
             else if (!tracked || head.ExitCode != 0)
-                patch = isLink ? "符号链接目标：" + new FileInfo(path).LinkTarget
-                    : isFile ? await ReadNewFileAsync(path, token) : "文件内容不可读取。";
+            {
+                if (remoteInfos is not null)
+                {
+                    patch = isLink ? "符号链接目标：" + linkTarget
+                        : remoteInfo is { IsBinary: true } ? "二进制文件，省略内容。"
+                        : remoteInfo is { InvalidUtf8: true } ? "文件不是可识别的文本，省略内容。"
+                        : remoteInfo is { IsFile: true, Text: not null } ? remoteInfo.Text
+                        : "文件内容不可读取。";
+                }
+                else
+                {
+                    string path = Path.Combine(root, file.Path);
+                    patch = isLink ? "符号链接目标：" + linkTarget
+                        : isFile ? await ReadNewFileAsync(path, token) : "文件内容不可读取。";
+                }
+            }
             else
             {
                 var paths = file.OriginalPath is null ? new[] { file.Path } : new[] { file.OriginalPath, file.Path };

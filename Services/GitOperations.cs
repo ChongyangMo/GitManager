@@ -1,5 +1,6 @@
 using System.IO;
 using GitManager.Models;
+using GitManager.Services.Remote;
 
 namespace GitManager.Services;
 
@@ -13,7 +14,17 @@ public sealed partial class GitRepositoryService
         await EnsureNoOperationAsync(root);
         string[] paths = files.SelectMany(file => file.Paths).Distinct(StringComparer.Ordinal).ToArray();
         var indexedPaths = (await Run(root, "ls-files", "-z")).Output.Split('\0', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
-        string[] stagePaths = paths.Where(path => indexedPaths.Contains(path) || File.Exists(Path.Combine(root, path)) || Directory.Exists(Path.Combine(root, path))).ToArray();
+        string[] stagePaths;
+        if (RemoteRepositoryPath.IsRemote(root))
+        {
+            string[] unindexed = paths.Where(path => !indexedPaths.Contains(path)).ToArray();
+            var existing = await RemoteFiles.FilterExistingPathsAsync(root, unindexed);
+            stagePaths = paths.Where(path => indexedPaths.Contains(path) || existing.Contains(path)).ToArray();
+        }
+        else
+        {
+            stagePaths = paths.Where(path => indexedPaths.Contains(path) || File.Exists(Path.Combine(root, path)) || Directory.Exists(Path.Combine(root, path))).ToArray();
+        }
         if (stagePaths.Length > 0) await RunWithPathsAsync(root, ["add", "-A"], stagePaths);
         await RunWithPathsAsync(root, ["commit", "--only", "-m", message.Trim()], paths, remote);
         AppLog.Write("已保存本地提交：" + root);
@@ -51,7 +62,14 @@ public sealed partial class GitRepositoryService
     public async Task EnsureNoOperationAsync(string root)
     {
         string metadata = (await Run(root, "rev-parse", "--absolute-git-dir")).Output.Trim();
-        foreach (string marker in new[] { "MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply", "BISECT_LOG" })
+        string[] markers = ["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply", "BISECT_LOG"];
+        if (RemoteRepositoryPath.IsRemote(root))
+        {
+            if (await RemoteFiles.HasAnyGitMarkerAsync(root, metadata, markers))
+                throw new InvalidOperationException("仓库正在合并、变基或执行其他操作，请先完成或取消该操作。");
+            return;
+        }
+        foreach (string marker in markers)
             if (File.Exists(Path.Combine(metadata, marker)) || Directory.Exists(Path.Combine(metadata, marker)))
                 throw new InvalidOperationException("仓库正在合并、变基或执行其他操作，请先完成或取消该操作。");
     }
@@ -65,12 +83,20 @@ public sealed partial class GitRepositoryService
 
     private async Task RunWithPathsAsync(string root, IEnumerable<string> command, IEnumerable<string> paths, string? remote = null)
     {
+        string nulPaths = string.Join('\0', paths) + '\0';
+        if (RemoteRepositoryPath.IsRemote(root))
+        {
+            string[] remoteArgs = command.Concat(["--pathspec-from-file=-", "--pathspec-file-nul"]).ToArray();
+            if (remoteArgs[0] == "commit") await RunWithCommitIdentityAsync(root, remoteArgs, remote: remote, standardInput: nulPaths);
+            else await Runner.RunAsync(root, remoteArgs, standardInput: nulPaths);
+            return;
+        }
         string directory = Path.Combine(SettingsStore.DataDirectory, "pathspecs");
         Directory.CreateDirectory(directory);
         string file = Path.Combine(directory, Guid.NewGuid().ToString("N") + ".txt");
         try
         {
-            await File.WriteAllTextAsync(file, string.Join('\0', paths) + '\0', new System.Text.UTF8Encoding(false));
+            await File.WriteAllTextAsync(file, nulPaths, new System.Text.UTF8Encoding(false));
             string[] arguments = command.Concat(["--pathspec-from-file=" + file, "--pathspec-file-nul"]).ToArray();
             if (arguments[0] == "commit") await RunWithCommitIdentityAsync(root, arguments, remote: remote);
             else await Runner.RunAsync(root, arguments);

@@ -1,0 +1,16 @@
+{
+  "alias": "macmini",
+  "label": "Mac",
+  "port": 49527,
+  "ssh_port": 22,
+  "git_path": "/usr/bin/git",
+  "roots": [
+    "~/iPhone_Project",
+    "~/Mac_Project",
+    "~/Desktop",
+    "~/Documents"
+  ],
+  "max_depth": 4,
+  "max_directories": 20000,
+  "cache_seconds": 15
+}

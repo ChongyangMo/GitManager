@@ -8,14 +8,14 @@ namespace GitManager.Services.CommitMessages;
 public sealed class CommitSummaryCache(string directory)
 {
     public static string Key(string root, QwenOptions options, CommitContent content) => Convert.ToHexString(SHA256.HashData(
-        Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Root = Path.GetFullPath(root), Endpoint = options.Endpoint().AbsoluteUri,
+        Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Root = Repositories.RepositoryDiscovery.Normalize(root), Endpoint = options.Endpoint().AbsoluteUri,
             options.Model, options.MaxOutputTokens, Prompt = QwenPrompt.Version, QwenPrompt.System, content.Fingerprint, content.Text }))));
     public static string ClaudeKey(string root, ClaudeOptions options, CommitContent content) => Convert.ToHexString(SHA256.HashData(
-        Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Root = Path.GetFullPath(root), Provider = "claude-code",
+        Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Root = Repositories.RepositoryDiscovery.Normalize(root), Provider = "claude-code",
             options.Model, Prompt = QwenPrompt.Version, QwenPrompt.System, content.Fingerprint, content.Text }))));
 
     public static string CodexKey(string root, CodexOptions options, CommitContent content) => Convert.ToHexString(SHA256.HashData(
-        Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Root = Path.GetFullPath(root), Provider = "codex",
+        Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Root = Repositories.RepositoryDiscovery.Normalize(root), Provider = "codex",
             options.Model, options.ReasoningEffort, Prompt = QwenPrompt.Version, QwenPrompt.System, content.Fingerprint, content.Text }))));
 
     public string? Read(string key)

@@ -71,7 +71,7 @@ public sealed partial class MainViewModel
         foreach (string root in roots)
         {
             if (_disposed) return;
-            if (!Directory.Exists(root) || _autoUploadRetryAt.TryGetValue(root, out var retry) && DateTime.UtcNow < retry) continue;
+            if ((!Services.Remote.RemoteRepositoryPath.IsRemote(root) && !Directory.Exists(root)) || _autoUploadRetryAt.TryGetValue(root, out var retry) && DateTime.UtcNow < retry) continue;
             try { await UploadRepositoryAsync(root, _lifetimeCancellation.Token); }
             catch (OperationCanceledException) when (_disposed) { return; }
             catch (Exception ex)

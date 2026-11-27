@@ -13,7 +13,7 @@ public sealed partial class GitRepositoryService
             + value.Rows.Sum(row => 64L + (row.Before.Length + (long)row.After.Length) * 2));
 
     private static string HistoryKey(string root, string hash, string? path = null)
-        => Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)).ToUpperInvariant() + "\0" + hash + "\0" + path;
+        => Repositories.RepositoryDiscovery.Normalize(root).ToUpperInvariant() + "\0" + hash + "\0" + path;
 
     public Task<HistoryPreview> ReadHistoryPreviewAsync(string root, CommitInfo commit, HistoryFile file)
         => _historyPreviews.GetAsync(HistoryKey(root, commit.Hash + "\0" + commit.FirstParent, file.Path), async () =>

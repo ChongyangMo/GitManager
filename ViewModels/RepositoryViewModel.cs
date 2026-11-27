@@ -12,7 +12,7 @@ public sealed partial class MainViewModel
         var timer = System.Diagnostics.Stopwatch.StartNew();
         string root = await Git.OpenAsync(path);
         var bookmark = Repositories.FirstOrDefault(item => string.Equals(item.Path, root, StringComparison.OrdinalIgnoreCase));
-        if (bookmark is null) { bookmark = new(root); Repositories.Add(bookmark); }
+        if (bookmark is null) { bookmark = new(root); ApplyRemoteHostLabel(bookmark); Repositories.Add(bookmark); }
         else bookmark.RefreshPath();
         await RefreshRepositoryNameAsync(bookmark);
         Repository = bookmark;

@@ -65,10 +65,10 @@ public sealed partial class GitRepositoryService
         finally { CommitEmailLock.Release(); }
     }
 
-    private async Task<GitResult> RunWithCommitIdentityAsync(string root, IEnumerable<string> arguments, bool allowFailure = false, string? remote = null)
+    private async Task<GitResult> RunWithCommitIdentityAsync(string root, IEnumerable<string> arguments, bool allowFailure = false, string? remote = null, string? standardInput = null)
     {
         var identity = await ResolveCommitIdentityAsync(root, remote);
-        return await Runner.RunAsync(root, new[] { "-c", "user.name=" + identity.Name, "-c", "user.email=" + identity.Email }.Concat(arguments), allowFailure);
+        return await Runner.RunAsync(root, new[] { "-c", "user.name=" + identity.Name, "-c", "user.email=" + identity.Email }.Concat(arguments), allowFailure, standardInput: standardInput);
     }
 }
 

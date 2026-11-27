@@ -8,7 +8,7 @@
                 <DockPanel IsEnabled="{Binding IsIdle}">
                     <StackPanel DockPanel.Dock="Top" Margin="16,22,16,18">
                         <DockPanel Margin="4,0,0,22"><Image Source="/GitManager;component/Assets/gitmanager.png" Width="28" Height="28" Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality" /><TextBlock Text="GitManager" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" /></DockPanel>
-                        <StackPanel><Button Content="添加仓库" Style="{StaticResource WorkspaceButton}" HorizontalAlignment="Stretch" Click="AddMenuClicked"><Button.ContextMenu><ContextMenu><MenuItem Header="添加本地仓库" Click="AddRepositoryClicked" /><MenuItem Header="新建仓库" Click="CreateRepositoryClicked" /><MenuItem Header="克隆仓库" Click="CloneRepositoryClicked" /></ContextMenu></Button.ContextMenu></Button><Button Content="服务云" Style="{StaticResource WorkspaceButton}" HorizontalAlignment="Stretch" Margin="0,8,0,0" Click="ServiceCloudClicked" /></StackPanel>
+                        <StackPanel><Button Content="添加仓库" Style="{StaticResource WorkspaceButton}" HorizontalAlignment="Stretch" Click="AddMenuClicked"><Button.ContextMenu><ContextMenu><MenuItem Header="添加本地仓库" Click="AddRepositoryClicked" /><MenuItem Header="添加远端仓库" Click="AddRemoteRepositoryClicked" /><MenuItem Header="新建仓库" Click="CreateRepositoryClicked" /><MenuItem Header="克隆仓库" Click="CloneRepositoryClicked" /></ContextMenu></Button.ContextMenu></Button><Button Content="服务云" Style="{StaticResource WorkspaceButton}" HorizontalAlignment="Stretch" Margin="0,8,0,0" Click="ServiceCloudClicked" /></StackPanel>
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Bottom" Margin="12,12,12,16"><Button Content="设置" Style="{StaticResource QuietButton}" HorizontalAlignment="Stretch" Click="SettingsClicked" /></StackPanel>
                     <ListBox x:Name="RepositoryList" ItemsSource="{Binding Repositories}" SelectedItem="{Binding Repository, Mode=OneWay}" Style="{StaticResource WorkspaceList}" SelectionChanged="RepositoryChanged" ScrollViewer.CanContentScroll="False" ClipToBounds="True" Padding="0,0,0,6">
@@ -24,6 +24,7 @@
                                 <Button x:Name="ConflictButton" DockPanel.Dock="Right" Content="同名" Tag="{Binding}" Visibility="Collapsed"
                                         Style="{StaticResource QuietButton}" Foreground="{DynamicResource WarningBrush}" MinWidth="34" MinHeight="24" Padding="4,0"
                                         Margin="5,0,0,0" Click="CompareRepositoryCopiesClicked" ToolTip="比较同名仓库"/>
+                                <TextBlock x:Name="RemoteHostTag" DockPanel.Dock="Right" Text="{Binding HostBadge}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" Visibility="{Binding IsRemote, Converter={StaticResource BoolVisibility}}" />
                                 <TextBlock x:Name="RepositoryName" Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                             </DockPanel>
                             <DataTemplate.Triggers><DataTrigger Binding="{Binding HasNameConflict}" Value="True">
@@ -70,7 +71,7 @@
                                         <Style x:Key="InfoValue" TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap" /><Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}" /></Style>
                                     </StackPanel.Resources>
                                     <TextBlock Text="{Binding Repository.Name}" FontSize="17" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Text="位置" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding Repository.Path}" Style="{StaticResource InfoValue}" />
+                                    <TextBlock Text="位置" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding Repository.DisplayPath}" Style="{StaticResource InfoValue}" />
                                     <StackPanel>
                                     <StackPanel.Style><Style TargetType="StackPanel"><Style.Triggers><DataTrigger Binding="{Binding IsWorkspaceLoading}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></StackPanel.Style>
                                     <TextBlock Text="当前分支" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding Branch}" Style="{StaticResource InfoValue}" />

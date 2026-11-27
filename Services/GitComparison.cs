@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text;
 using GitManager.Models;
+using GitManager.Services.Remote;
 
 namespace GitManager.Services;
 
@@ -12,8 +13,21 @@ public sealed partial class GitRepositoryService
         try
         {
             string before = hasHead ? await ReadBlobAsync(root, "HEAD", file.OriginalPath ?? file.Path) : string.Empty;
-            string diskPath = Path.Combine(root, file.Path);
-            string after = File.Exists(diskPath) ? await ReadDiskTextAsync(diskPath) : string.Empty;
+            string after;
+            if (RemoteRepositoryPath.IsRemote(root))
+            {
+                var remoteFile = await RemoteFiles.ReadWorkingTextAsync(root, file.Path, PreviewLimit);
+                if (!remoteFile.Exists) after = string.Empty;
+                else if (remoteFile.TooLarge) throw new PreviewException("文件较大，请使用外部编辑器查看。");
+                else if (remoteFile.IsBinary) throw new PreviewException("二进制文件不显示文本差异。");
+                else if (remoteFile.InvalidUtf8) throw new PreviewException("文件不是 UTF-8 文本，请使用外部编辑器查看。");
+                else after = remoteFile.Text;
+            }
+            else
+            {
+                string diskPath = Path.Combine(root, file.Path);
+                after = File.Exists(diskPath) ? await ReadDiskTextAsync(diskPath) : string.Empty;
+            }
             string patch = await CompareTextsAsync(before, after);
             return new(before, after, patch, "上次提交", "工作区");
         }

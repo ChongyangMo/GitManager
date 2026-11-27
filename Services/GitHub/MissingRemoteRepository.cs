@@ -29,8 +29,10 @@ public sealed partial class GitRepositoryService
 
     private async Task<GitHub.GitHubRepositoryClient> CreateGitHubClientAsync(string? root, string httpsUrl, string missingCredential, CancellationToken token)
     {
+        // GitHub API 请求从 Windows 本机发出；远端主机仓库直接复用 Windows 本机的 Git 凭据管理器和代理配置。
+        string? credentialRoot = Remote.RemoteRepositoryPath.IsRemote(root) ? null : root;
         // 复用 Git 凭据管理器，令牌只在内存中使用，不写入配置或日志。
-        var credential = await Runner.RunAsync(root, ["-c", "credential.interactive=false", "credential", "fill"], true, token,
+        var credential = await Runner.RunAsync(credentialRoot, ["-c", "credential.interactive=false", "credential", "fill"], true, token,
             standardInput: "url=" + httpsUrl + "\n\n");
         string? secret = credential.Output.Split('\n').FirstOrDefault(line => line.StartsWith("password=", StringComparison.Ordinal))?[9..].TrimEnd('\r');
         if (credential.ExitCode != 0 || string.IsNullOrEmpty(secret))
@@ -38,8 +40,8 @@ public sealed partial class GitRepositoryService
         string proxy = GitHubOptions.ProxyUrl;
         if (string.IsNullOrWhiteSpace(proxy))
         {
-            var configured = await Runner.RunAsync(root, ["config", "--get-urlmatch", "http.proxy", "https://api.github.com/"], true, token);
-            if (configured.ExitCode == 1) configured = await Runner.RunAsync(root, ["config", "--get-urlmatch", "http.proxy", httpsUrl], true, token);
+            var configured = await Runner.RunAsync(credentialRoot, ["config", "--get-urlmatch", "http.proxy", "https://api.github.com/"], true, token);
+            if (configured.ExitCode == 1) configured = await Runner.RunAsync(credentialRoot, ["config", "--get-urlmatch", "http.proxy", httpsUrl], true, token);
             if (configured.ExitCode is not (0 or 1)) throw new InvalidOperationException("读取 Git 代理配置失败，请检查仓库设置。");
             proxy = configured.Output.Trim();
         }

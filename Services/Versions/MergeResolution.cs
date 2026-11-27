@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.RegularExpressions;
+using GitManager.Services.Remote;
 
 namespace GitManager.Services;
 
@@ -7,6 +8,12 @@ public sealed partial class GitRepositoryService
 {
     private async Task EnsureMergeAsync(string root)
     {
+        if (RemoteRepositoryPath.IsRemote(root))
+        {
+            if ((await Runner.RunAsync(root, ["rev-parse", "--verify", "-q", "MERGE_HEAD"], true)).ExitCode != 0)
+                throw new InvalidOperationException("当前没有待完成的合并。");
+            return;
+        }
         string directory = (await Run(root, "rev-parse", "--absolute-git-dir")).Output.Trim();
         if (!File.Exists(Path.Combine(directory, "MERGE_HEAD"))) throw new InvalidOperationException("当前没有待完成的合并。");
     }
@@ -25,12 +32,22 @@ public sealed partial class GitRepositoryService
         }
         else if (side == "edited")
         {
-            string file = Path.Combine(root, path);
-            if (File.Exists(file) && new FileInfo(file).Length <= PreviewLimit)
+            if (RemoteRepositoryPath.IsRemote(root))
             {
-                string text = await File.ReadAllTextAsync(file);
-                if (Regex.IsMatch(text, @"^(<<<<<<< |=======\r?$|>>>>>>> )", RegexOptions.Multiline))
+                var remoteFile = await RemoteFiles.ReadWorkingTextAsync(root, path, PreviewLimit);
+                if (remoteFile.Exists && !remoteFile.TooLarge && !remoteFile.IsBinary && !remoteFile.InvalidUtf8
+                    && Regex.IsMatch(remoteFile.Text, @"^(<<<<<<< |=======\r?$|>>>>>>> )", RegexOptions.Multiline))
                     throw new InvalidOperationException("文件中仍有冲突标记，请编辑完成后再标记为已解决。");
+            }
+            else
+            {
+                string file = Path.Combine(root, path);
+                if (File.Exists(file) && new FileInfo(file).Length <= PreviewLimit)
+                {
+                    string text = await File.ReadAllTextAsync(file);
+                    if (Regex.IsMatch(text, @"^(<<<<<<< |=======\r?$|>>>>>>> )", RegexOptions.Multiline))
+                        throw new InvalidOperationException("文件中仍有冲突标记，请编辑完成后再标记为已解决。");
+                }
             }
         }
         else throw new InvalidOperationException("不支持的冲突处理方式。");

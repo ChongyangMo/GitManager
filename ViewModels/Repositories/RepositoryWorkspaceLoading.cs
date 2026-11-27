@@ -26,7 +26,7 @@ public sealed partial class MainViewModel
         long openGeneration = ++_repositoryOpenGeneration;
         CancelCommitSummary();
         InvalidateHistoryNavigation();
-        var bookmark = Repositories.FirstOrDefault(item => string.Equals(item.Path, Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase));
+        var bookmark = Repositories.FirstOrDefault(item => string.Equals(item.Path, Services.Repositories.RepositoryDiscovery.Normalize(path), StringComparison.OrdinalIgnoreCase));
         if (bookmark is null) return RegisterRepositoryAsync(path, openGeneration);
         bookmark.RefreshPath();
         CacheCurrentWorkspace();

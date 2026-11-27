@@ -43,7 +43,9 @@ public sealed partial class GitRepositoryService
         }
         await Task.WhenAll(metadataTask, remotesTask, referencesTask);
         string metadata = (await metadataTask).Output.Trim();
-        bool merging = File.Exists(Path.Combine(metadata, "MERGE_HEAD"));
+        bool merging = Remote.RemoteRepositoryPath.IsRemote(root)
+            ? (await Runner.RunAsync(root, ["rev-parse", "--verify", "-q", "MERGE_HEAD"], true)).ExitCode == 0
+            : File.Exists(Path.Combine(metadata, "MERGE_HEAD"));
         string[] remotes = (await remotesTask).Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         List<RemoteBranch> branches = [];
         string[] references = (await referencesTask).Output.Split('\0');

@@ -22,6 +22,7 @@ public sealed class AppSettings
     public CommitMessages.ClaudeOptions Claude { get; set; } = new();
     public CommitMessages.CodexOptions Codex { get; set; } = new();
     public LuxAi.LuxAiOptions LuxAi { get; set; } = new();
+    public Remote.RemoteHostsOptions? RemoteHosts { get; set; }
 }
 
 public sealed class SettingsStore
@@ -72,6 +73,30 @@ public sealed class SettingsStore
             Value.ServiceCloud = File.Exists(defaults)
                 ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(defaults))?.ServiceCloud ?? new()
                 : new();
+        }
+        if (Value.RemoteHosts is null)
+        {
+            string defaults = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+            Value.RemoteHosts = File.Exists(defaults)
+                ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(defaults))?.RemoteHosts ?? new()
+                : new();
+        }
+        Value.RemoteHosts.Hosts ??= [];
+        {
+            string defaults = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+            var defaultHosts = File.Exists(defaults)
+                ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(defaults))?.RemoteHosts?.Hosts
+                : null;
+            if (defaultHosts is not null)
+            {
+                foreach (var host in Value.RemoteHosts.Hosts)
+                {
+                    if (!string.IsNullOrWhiteSpace(host.ForwardProxyUrl)) continue;
+                    var matched = defaultHosts.FirstOrDefault(item => string.Equals(item.Alias, host.Alias, StringComparison.OrdinalIgnoreCase));
+                    if (!string.IsNullOrWhiteSpace(matched?.ForwardProxyUrl))
+                        host.ForwardProxyUrl = matched.ForwardProxyUrl;
+                }
+            }
         }
         if (Repositories.RepositoryPaths.Refresh(Value) && File.Exists(FilePath))
         {

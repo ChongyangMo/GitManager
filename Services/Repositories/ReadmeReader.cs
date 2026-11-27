@@ -5,7 +5,8 @@ namespace GitManager.Services.Repositories;
 
 public sealed record ReadmeDocument(string Path, string Text)
 {
-    public string FileName => System.IO.Path.GetFileName(Path);
+    public string FileName => Remote.RemoteRepositoryPath.FileName(Path);
+    public bool IsRemote => Remote.RemoteRepositoryPath.IsRemote(Path);
 }
 
 public static class ReadmeReader
@@ -14,8 +15,13 @@ public static class ReadmeReader
     private static readonly string[] PreferredExtensions = [".md", ".markdown", "", ".txt", ".rst"];
 
     // 只读取仓库根目录的说明文件，优先 Markdown，过大的文件截断显示。
-    public static async Task<ReadmeDocument?> ReadAsync(string root, CancellationToken cancellationToken = default)
+    public static async Task<ReadmeDocument?> ReadAsync(string root, CancellationToken cancellationToken = default, GitRepositoryService? git = null)
     {
+        if (Remote.RemoteRepositoryPath.IsRemote(root))
+        {
+            if (git?.Runner.Remote is null) return null;
+            return await git.RemoteFiles.ReadReadmeAsync(root, cancellationToken);
+        }
         try { return await ReadCoreAsync(root, cancellationToken); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

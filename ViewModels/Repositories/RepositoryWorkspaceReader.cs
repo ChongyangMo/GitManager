@@ -9,7 +9,7 @@ public sealed partial class MainViewModel
     // 所有异步读取只使用传入的仓库和选择，切换过程中不读取当前界面状态。
     private async Task<WorkspaceContent> ReadWorkspaceAsync(string root, WorkspaceSelection selection)
     {
-        var readmeTask = ReadmeReader.ReadAsync(root);
+        var readmeTask = ReadmeReader.ReadAsync(root, git: Git);
         var snapshot = await Git.ReadAsync(root);
         var versions = await Git.ReadVersionsAsync(root, selection.LocalBranch == snapshot.Branch ? selection.RemoteBranch : null, snapshot);
         var commit = snapshot.History.FirstOrDefault(item => item.Hash == selection.Commit) ?? snapshot.History.FirstOrDefault();

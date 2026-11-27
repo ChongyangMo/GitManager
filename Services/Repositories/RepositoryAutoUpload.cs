@@ -11,6 +11,11 @@ public static class RepositoryAutoUpload
         var files = await git.ReadChangesAsync(root, token);
         if (files.Count == 0) return [];
         if (files.Any(file => file.IsConflict)) return null;
+        if (Remote.RemoteRepositoryPath.IsRemote(root))
+        {
+            TimeSpan elapsed = await git.RemoteFiles.ReadQuietDurationAsync(root, files.SelectMany(file => file.Paths), token);
+            return elapsed >= quiet ? files : null;
+        }
         DateTime latest = files.SelectMany(file => file.Paths).Max(path => LastWrite(Path.Combine(root, path)));
         return DateTime.UtcNow - latest >= quiet ? files : null;
     }

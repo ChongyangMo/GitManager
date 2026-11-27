@@ -1,4 +1,5 @@
 using GitManager.ViewModels;
+using GitManager.Services.Remote;
 using GitManager.Services.Repositories;
 
 namespace GitManager.Models;
@@ -6,6 +7,7 @@ namespace GitManager.Models;
 public sealed class RepositoryBookmark(string path) : ObservableObject
 {
     private string? _displayName;
+    private string _hostLabel = "";
     private bool _hasNameConflict;
     private string _conflictHint = "";
     private string _repositoryTarget = "";
@@ -21,14 +23,25 @@ public sealed class RepositoryBookmark(string path) : ObservableObject
     }
     private string _path = Services.Repositories.RepositoryPaths.Actual(path);
     public string Path => _path;
+    public bool IsRemote => RemoteRepositoryPath.IsRemote(_path);
+    public string HostBadge => IsRemote ? (_hostLabel.Length > 0 ? _hostLabel : RemoteRepositoryPath.TryParse(_path, out string alias, out _) ? alias : "远端") : "";
+    public string DisplayPath => IsRemote ? RemoteRepositoryPath.DisplayLocation(_path, _ => _hostLabel.Length > 0 ? _hostLabel : null) : _path;
+    public void UpdateHostLabel(string? label)
+    {
+        if (!Set(ref _hostLabel, label?.Trim() ?? "", nameof(HostBadge))) return;
+        Notify(nameof(DisplayPath));
+    }
     public bool RefreshPath()
     {
         string actual = Services.Repositories.RepositoryPaths.Actual(Path);
         if (!Set(ref _path, actual, nameof(Path))) return false;
         Notify(nameof(Name));
+        Notify(nameof(IsRemote));
+        Notify(nameof(HostBadge));
+        Notify(nameof(DisplayPath));
         return true;
     }
-    public string Name => _displayName ?? (System.IO.Path.GetFileName(Path.TrimEnd('\\', '/')) is { Length: > 0 } name ? name : Path);
+    public string Name => _displayName ?? RemoteRepositoryPath.FileName(Path);
     public string RepositoryTarget => _repositoryTarget;
     public bool HasNameConflict { get => _hasNameConflict; private set => Set(ref _hasNameConflict, value); }
     public string ConflictHint { get => _conflictHint; private set => Set(ref _conflictHint, value); }

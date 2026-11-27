@@ -55,9 +55,21 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public MainViewModel(SettingsStore settings)
     {
         Settings = settings;
-        Git = new(new GitRunner(() => Settings.Value.GitExecutablePath, _lifetimeCancellation.Token, () => Settings.Value.GitExecution), Settings.Value.GitHub, () => Settings.Value.ServiceCloud);
+        var remoteSsh = new Services.Remote.RemoteSshRunner(() => Settings.Value.RemoteHosts ?? new(), _lifetimeCancellation.Token, () => Settings.Value.GitExecution);
+        Git = new(new GitRunner(() => Settings.Value.GitExecutablePath, _lifetimeCancellation.Token, () => Settings.Value.GitExecution, remoteSsh), Settings.Value.GitHub, () => Settings.Value.ServiceCloud);
         Repositories.CollectionChanged += RepositoryBookmarksChanged;
-        foreach (string path in settings.Value.Repositories.Distinct(StringComparer.OrdinalIgnoreCase)) Repositories.Add(new(path));
+        foreach (string path in settings.Value.Repositories.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var bookmark = new RepositoryBookmark(path);
+            ApplyRemoteHostLabel(bookmark);
+            Repositories.Add(bookmark);
+        }
+    }
+
+    private void ApplyRemoteHostLabel(RepositoryBookmark bookmark)
+    {
+        if (!Services.Remote.RemoteRepositoryPath.TryParse(bookmark.Path, out string alias, out _)) return;
+        bookmark.UpdateHostLabel(Settings.Value.RemoteHosts?.Find(alias)?.EffectiveLabel ?? alias);
     }
 
     public void Dispose()

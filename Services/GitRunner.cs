@@ -3,11 +3,13 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using GitManager.Models;
+using GitManager.Services.Remote;
 
 namespace GitManager.Services;
 
-public sealed class GitRunner(Func<string> executable, CancellationToken lifetime = default, Func<GitExecutionOptions>? executionOptions = null)
+public sealed class GitRunner(Func<string> executable, CancellationToken lifetime = default, Func<GitExecutionOptions>? executionOptions = null, RemoteSshRunner? remote = null)
 {
+    public RemoteSshRunner? Remote { get; } = remote;
     // 进程初始化失败（STATUS_DLL_INIT_FAILED），常见于同时启动过多进程，此时 Git 尚未执行任何操作。
     private const int DllInitFailed = unchecked((int)0xC0000142);
     private const uint FailCriticalErrors = 0x0001, NoGpFaultErrorBox = 0x0002;
@@ -27,6 +29,11 @@ public sealed class GitRunner(Func<string> executable, CancellationToken lifetim
     {
         cancellationToken.ThrowIfCancellationRequested();
         lifetime.ThrowIfCancellationRequested();
+        if (RemoteRepositoryPath.IsRemote(directory))
+        {
+            if (Remote is null) throw new InvalidOperationException("当前未配置远端 SSH 执行器，无法访问远端仓库。");
+            return await Remote.RunGitAsync(directory!, arguments, allowFailure, cancellationToken, strictUtf8, standardInput, binaryOutput).ConfigureAwait(false);
+        }
         string git = executable();
         if (!File.Exists(git)) throw new FileNotFoundException("未找到 Git，请在设置中选择 git.exe。", git);
         string[] args = arguments.ToArray();

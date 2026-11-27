@@ -23,7 +23,7 @@ public sealed partial class CommitMessageGenerator
             : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(session.AiToken)));
         string key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
         {
-            Root = Path.GetFullPath(root), Provider = "luxai", Endpoint = options.Endpoint().AbsoluteUri,
+            Root = Repositories.RepositoryDiscovery.Normalize(root), Provider = "luxai", Endpoint = options.Endpoint().AbsoluteUri,
             Employee = identity, Prompt = QwenPrompt.Version, QwenPrompt.System, content.Fingerprint, content.Text
         }))));
         var cache = new CommitSummaryCache(Path.Combine(Path.GetDirectoryName(settings.FilePath)!, "commit-summary-cache"));

@@ -1,17 +1,37 @@
 using System.IO;
 using GitManager.Models;
+using GitManager.Services.Remote;
 
 namespace GitManager.Services;
 
 public sealed partial class GitRepositoryService(GitRunner runner, GitHub.GitHubOptions? gitHubOptions = null, Func<ServiceCloud.ServiceCloudOptions>? serviceCloudOptions = null)
 {
     public GitRunner Runner { get; } = runner;
+    internal RemoteFileSystem RemoteFiles => new(Runner.Remote ?? throw new InvalidOperationException("当前未配置远端 SSH 执行器。"));
     private GitHub.GitHubOptions GitHubOptions { get; } = gitHubOptions ?? new();
     private ServiceCloud.ServiceCloudOptions CloudOptions() => serviceCloudOptions?.Invoke() ?? new();
     private Task<GitResult> Run(string root, params string[] args) => Runner.RunAsync(root, args);
 
     public async Task<string> OpenAsync(string directory, CancellationToken cancellationToken = default)
     {
+        if (RemoteRepositoryPath.TryParse(directory, out string alias, out string remoteDir))
+        {
+            var remoteResult = await Runner.RunAsync(directory, ["rev-parse", "--show-toplevel", "--show-prefix"], allowFailure: true, cancellationToken: cancellationToken);
+            if (remoteResult.ExitCode != 0)
+            {
+                if (remoteResult.ExitCode == 255)
+                    throw new IOException("无法连接到远端主机：" + (string.IsNullOrWhiteSpace(remoteResult.Error) ? alias : remoteResult.Error.Trim()));
+                throw new InvalidOperationException("远端目录不是有效的 Git 仓库：" + remoteDir);
+            }
+            string[] lines = remoteResult.Output.Replace("\r\n", "\n").Split('\n');
+            string topLevel = RemoteRepositoryPath.NormalizePosix(lines.Length > 0 ? lines[0].Trim() : "");
+            string prefix = lines.Length > 1 ? lines[1].Trim() : "";
+            if (topLevel.Length == 0)
+                throw new InvalidOperationException("无法识别远端仓库根目录：" + remoteDir);
+            if (prefix.Length > 0)
+                throw new InvalidOperationException("请选择远端仓库根目录，当前目录属于上级仓库：" + topLevel);
+            return RemoteRepositoryPath.Format(alias, topLevel);
+        }
         if (!Directory.Exists(directory)) throw new DirectoryNotFoundException("仓库目录不存在。" + directory);
         var result = await Runner.RunAsync(directory, ["rev-parse", "--show-toplevel"], allowFailure: true, cancellationToken: cancellationToken);
         if (result.ExitCode != 0) throw new InvalidOperationException("这个目录尚未建立 Git 仓库，请使用“新建仓库”。");
